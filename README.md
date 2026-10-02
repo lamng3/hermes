@@ -1,5 +1,7 @@
 # nl2sparql
 
+[Documentation](https://lamng3.github.io/nl2sparql-docs/)
+
 Training-free natural language to SPARQL. A question, a Turtle ontology, and
 optional context go in. One SPARQL query comes out. The model is used as a
 generator. Nothing here is trained on query pairs.
