@@ -1,14 +1,23 @@
-# nl2sparql
+# Erotema
 
-[Documentation](https://lamng3.github.io/nl2sparql-docs/)
+Erotema is a Python library for turning natural-language questions into SPARQL
+queries over an ontology. Every approach is a *system* behind one interface, so
+you can import the package, run one system, and swap in another without
+changing your code. Systems register by name; the one that ships today is
+`training-free`, which needs no query-pair training.
 
-Training-free natural language to SPARQL. A question, a Turtle ontology, and
-optional context go in. One SPARQL query comes out. The model is used as a
-generator. Nothing here is trained on query pairs.
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+
+## Quick start
+
+A question, a Turtle ontology, and optional context go in. One SPARQL query
+comes out.
 
 ```bash
+git clone https://github.com/lamng3/erotema.git
+cd erotema
 pip install -e .
-nl2sparql generate \
+erotema generate \
   --ontology GeoOutage.ttl \
   --question "Which counties have the highest number of outages?" \
   --context notes.txt \
@@ -20,33 +29,53 @@ nl2sparql generate \
 Generation uses a local [Ollama](https://ollama.com) model at
 `http://127.0.0.1:11434`. Install one if needed (`ollama pull llama3.1`).
 The client prefers `llama3.1`, then `mistral`, then `phi3`, then whichever
-model is installed. Override it with `ONTOCHECK_OLLAMA_MODEL`, and the server
-with `ONTOCHECK_OLLAMA_BASE_URL`.
+model is installed. Override it with `EROTEMA_OLLAMA_MODEL`, and the server
+with `EROTEMA_OLLAMA_BASE_URL`.
 
-To use an OpenAI-compatible API instead, set `ONTOCHECK_LLM_PROVIDER=openai`
-and `ONTOCHECK_LLM_API_KEY`. Optional `ONTOCHECK_LLM_BASE_URL` and
-`ONTOCHECK_LLM_MODEL`.
+To use an OpenAI-compatible API instead, set `EROTEMA_LLM_PROVIDER=openai`
+and `EROTEMA_LLM_API_KEY`. Optional `EROTEMA_LLM_BASE_URL` and
+`EROTEMA_LLM_MODEL`.
 
 From Python:
 
 ```python
-from nl2sparql import Context, Example, generate
+from erotema import Context, Example, ask
 
-result = generate(
+result = ask(
     "Which counties have the highest number of outages?",
     "GeoOutage.ttl",
     context=Context(
         text="Counties are administrative regions.",
         examples=[Example(nl="List outage records.", sparql="SELECT ?rec WHERE { ?rec a geooutageonto:OutageRecord }")],
     ),
+    system="training-free",
 )
 print(result["sparql"])
 ```
 
-## Pipeline
+## Systems
+
+A system is any callable `(question, ontology, context) -> {"sparql": ...}`.
+Register it by name, then run it with `ask`:
+
+```python
+import erotema
+
+@erotema.systems.register("my-system")
+def my_system(question, ontology, context):
+    return {"sparql": "SELECT * WHERE { ?s ?p ?o } LIMIT 1"}
+
+erotema.systems.available()   # ['my-system', 'training-free']
+erotema.ask("...", "onto.ttl", system="my-system")
+```
+
+`erotema systems` lists the registered names, and `erotema generate --system NAME`
+runs one from the command line.
+
+## The training-free system
 
 The draft is produced from the ontology vocabulary, then passed through a
-fixed list of stages in `nl2sparql.stages`. Today these stages return the
+fixed list of stages in `erotema.stages`. Today these stages return the
 draft unchanged:
 
 - Guardrails: reject or rewrite queries that leave the ontology vocabulary.
@@ -56,3 +85,7 @@ draft unchanged:
 
 Parse checking and one repair call run after those stages. Later research
 replaces a stage in that list.
+
+## License
+
+[CC BY 4.0](LICENSE). Copyright (c) 2026 Lam Nguyen.

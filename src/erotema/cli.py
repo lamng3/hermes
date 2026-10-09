@@ -4,11 +4,12 @@ import argparse
 import json
 from pathlib import Path
 
-from nl2sparql.generate import Context, Example, generate
+from erotema import ask, systems
+from erotema.generate import Context, Example
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="nl2sparql")
+    parser = argparse.ArgumentParser(prog="erotema")
     subcommands = parser.add_subparsers(dest="command", required=True)
     generate_command = subcommands.add_parser(
         "generate", help="Write one SPARQL query for a question and an ontology."
@@ -22,11 +23,21 @@ def main(argv=None):
         "--examples",
         help="JSONL file of example objects with nl and sparql fields.",
     )
+    generate_command.add_argument(
+        "--system",
+        default="training-free",
+        help="Registered system to run (default: training-free).",
+    )
+    subcommands.add_parser("systems", help="List the registered systems.")
     args = parser.parse_args(argv)
-    result = generate(
+    if args.command == "systems":
+        print("\n".join(systems.available()))
+        return 0
+    result = ask(
         args.question,
         args.ontology,
         context=_load_context(args.context, args.examples),
+        system=args.system,
     )
     print(json.dumps(result, indent=2))
     return 0

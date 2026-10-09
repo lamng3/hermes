@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from nl2sparql.generate import Context, Example, build_prompt
-from nl2sparql.ontology import load_vocabulary
-from nl2sparql.stages import apply_stages
-from nl2sparql.validate import lift_modifiers, parse_error
+from erotema.generate import Context, Example, build_prompt
+from erotema.ontology import load_vocabulary
+from erotema.stages import apply_stages
+from erotema.validate import lift_modifiers, parse_error
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -66,3 +66,14 @@ def test_prompt_includes_context_and_examples():
 def test_research_stages_leave_the_draft_unchanged():
     draft = "SELECT ?city WHERE { ?city a ex:City }"
     assert apply_stages(draft, {"classes": []}, Context()) == draft
+
+
+def test_registered_system_runs_through_ask():
+    import erotema
+
+    @erotema.systems.register("echo-test")
+    def echo(question, ontology, context):
+        return {"sparql": f"# {question}"}
+
+    assert "echo-test" in erotema.systems.available()
+    assert erotema.ask("hi", "x.ttl", system="echo-test") == {"sparql": "# hi"}
