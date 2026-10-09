@@ -2,10 +2,10 @@
 
 from dataclasses import dataclass, field
 
-from erotema.llm import complete
-from erotema.ontology import load_vocabulary
-from erotema.stages import apply_stages
-from erotema.validate import parse_error, prepare_draft, repair_prompt
+from hermes.llm import complete
+from hermes.ontology import load_vocabulary
+from hermes.stages import apply_stages
+from hermes.validate import parse_error, prepare_draft, repair_prompt
 
 
 @dataclass

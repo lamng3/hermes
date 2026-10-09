@@ -1,7 +1,7 @@
-"""Erotema: natural language to SPARQL, with pluggable systems."""
+"""Hermes: natural language to SPARQL, with pluggable systems."""
 
-from erotema import systems
-from erotema.generate import Context, Example, generate
+from hermes import systems
+from hermes.generate import Context, Example, generate
 
 DEFAULT_SYSTEM = "training-free"
 

@@ -2,7 +2,7 @@
 
 A system is a callable taking (question, ontology, context) and returning a
 dict with at least a "sparql" key. Register one with @register("name") and run
-it with erotema.ask(..., system="name").
+it with hermes.ask(..., system="name").
 """
 
 _SYSTEMS = {}

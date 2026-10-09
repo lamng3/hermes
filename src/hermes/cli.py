@@ -4,12 +4,12 @@ import argparse
 import json
 from pathlib import Path
 
-from erotema import ask, systems
-from erotema.generate import Context, Example
+from hermes import ask, systems
+from hermes.generate import Context, Example
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="erotema")
+    parser = argparse.ArgumentParser(prog="hermes")
     subcommands = parser.add_subparsers(dest="command", required=True)
     generate_command = subcommands.add_parser(
         "generate", help="Write one SPARQL query for a question and an ontology."
