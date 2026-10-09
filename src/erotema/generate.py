@@ -2,10 +2,10 @@
 
 from dataclasses import dataclass, field
 
-from nl2sparql.llm import complete
-from nl2sparql.ontology import load_vocabulary
-from nl2sparql.stages import apply_stages
-from nl2sparql.validate import parse_error, prepare_draft, repair_prompt
+from erotema.llm import complete
+from erotema.ontology import load_vocabulary
+from erotema.stages import apply_stages
+from erotema.validate import parse_error, prepare_draft, repair_prompt
 
 
 @dataclass
