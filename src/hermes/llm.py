@@ -21,7 +21,7 @@ def complete(prompt):
 
 
 def _provider():
-    configured = os.environ.get("EROTEMA_LLM_PROVIDER", "").strip().lower()
+    configured = os.environ.get("HERMES_LLM_PROVIDER", "").strip().lower()
     if configured == "openai":
         return "openai"
     return "ollama"
@@ -29,7 +29,7 @@ def _provider():
 
 def _ollama_chat(prompt):
     base_url = os.environ.get(
-        "EROTEMA_OLLAMA_BASE_URL", "http://127.0.0.1:11434"
+        "HERMES_OLLAMA_BASE_URL", "http://127.0.0.1:11434"
     ).rstrip("/")
     try:
         model = _ollama_model(base_url)
@@ -54,7 +54,7 @@ def _ollama_chat(prompt):
     except httpx.TimeoutException as exc:
         raise LookupError(
             "Ollama took too long to answer. Try again, or set "
-            "EROTEMA_OLLAMA_MODEL to a smaller model."
+            "HERMES_OLLAMA_MODEL to a smaller model."
         ) from exc
     if response.status_code == 404:
         raise LookupError(
@@ -65,7 +65,7 @@ def _ollama_chat(prompt):
 
 
 def _ollama_model(base_url):
-    configured = os.environ.get("EROTEMA_OLLAMA_MODEL", "").strip()
+    configured = os.environ.get("HERMES_OLLAMA_MODEL", "").strip()
     if configured:
         return configured
     response = httpx.get(f"{base_url}/api/tags", timeout=5.0)
@@ -87,16 +87,16 @@ def _ollama_model(base_url):
 
 
 def _openai_chat(prompt):
-    api_key = os.environ.get("EROTEMA_LLM_API_KEY", "").strip()
+    api_key = os.environ.get("HERMES_LLM_API_KEY", "").strip()
     if not api_key:
         raise LookupError(
-            "Set EROTEMA_LLM_API_KEY, or leave EROTEMA_LLM_PROVIDER unset to use Ollama."
+            "Set HERMES_LLM_API_KEY, or leave HERMES_LLM_PROVIDER unset to use Ollama."
         )
     base_url = os.environ.get(
-        "EROTEMA_LLM_BASE_URL", "https://api.together.xyz/v1"
+        "HERMES_LLM_BASE_URL", "https://api.together.xyz/v1"
     ).rstrip("/")
     model = os.environ.get(
-        "EROTEMA_LLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+        "HERMES_LLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
     )
     response = httpx.post(
         f"{base_url}/chat/completions",

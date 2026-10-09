@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from erotema.generate import Context, Example, build_prompt
-from erotema.ontology import load_vocabulary
-from erotema.stages import apply_stages
-from erotema.validate import lift_modifiers, parse_error
+from hermes.generate import Context, Example, build_prompt
+from hermes.ontology import load_vocabulary
+from hermes.stages import apply_stages
+from hermes.validate import lift_modifiers, parse_error
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -69,11 +69,11 @@ def test_research_stages_leave_the_draft_unchanged():
 
 
 def test_registered_system_runs_through_ask():
-    import erotema
+    import hermes
 
-    @erotema.systems.register("echo-test")
+    @hermes.systems.register("echo-test")
     def echo(question, ontology, context):
         return {"sparql": f"# {question}"}
 
-    assert "echo-test" in erotema.systems.available()
-    assert erotema.ask("hi", "x.ttl", system="echo-test") == {"sparql": "# hi"}
+    assert "echo-test" in hermes.systems.available()
+    assert hermes.ask("hi", "x.ttl", system="echo-test") == {"sparql": "# hi"}
