@@ -24,29 +24,33 @@ Settings, all optional, read when you deploy:
 
 import os
 import subprocess
+import threading
 
 import modal
 
-MODEL = os.environ.get("HERMES_MODEL", "Qwen/Qwen2.5-7B-Instruct")
-GPU = os.environ.get("HERMES_GPU", "L40S")
-MAX_LEN = os.environ.get("HERMES_MAX_LEN", "16384")
+# Settings are read on your machine at deploy time and baked into the image,
+# so the container reads the same values and the app's definition (including
+# whether a secret is attached) is identical on both sides.
+SETTINGS = {
+    "HERMES_MODEL": os.environ.get("HERMES_MODEL", "Qwen/Qwen2.5-7B-Instruct"),
+    "HERMES_GPU": os.environ.get("HERMES_GPU", "L40S"),
+    "HERMES_MAX_LEN": os.environ.get("HERMES_MAX_LEN", "16384"),
+    "HERMES_HF_SECRET": os.environ.get("HERMES_HF_SECRET", ""),
+}
+MODEL = SETTINGS["HERMES_MODEL"]
 PORT = 8000
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
     .uv_pip_install("vllm==0.29.0", "huggingface_hub[hf_transfer]")
-    .env({
-        "HF_HUB_ENABLE_HF_TRANSFER": "1",
-        "HERMES_MODEL": MODEL,
-        "HERMES_MAX_LEN": MAX_LEN,
-    })
+    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1", **SETTINGS})
 )
 weights = modal.Volume.from_name("hermes-hf-cache", create_if_missing=True)
 compiled = modal.Volume.from_name("hermes-vllm-cache", create_if_missing=True)
 
 
 def _secrets():
-    name = os.environ.get("HERMES_HF_SECRET")
+    name = SETTINGS["HERMES_HF_SECRET"]
     return [modal.Secret.from_name(name)] if name else []
 
 
@@ -55,7 +59,7 @@ app = modal.App("hermes-vllm-" + MODEL.split("/")[-1].lower().replace(".", "-")[
 
 @app.function(
     image=image,
-    gpu=GPU,
+    gpu=SETTINGS["HERMES_GPU"],
     scaledown_window=5 * 60,
     timeout=24 * 60 * 60,
     volumes={"/root/.cache/huggingface": weights, "/root/.cache/vllm": compiled},
@@ -65,10 +69,20 @@ app = modal.App("hermes-vllm-" + MODEL.split("/")[-1].lower().replace(".", "-")[
 @modal.web_server(port=PORT, startup_timeout=15 * 60)
 def serve():
     model = os.environ["HERMES_MODEL"]
-    subprocess.Popen([
+    server = subprocess.Popen([
         "vllm", "serve", model,
         "--served-model-name", model,
         "--host", "0.0.0.0",
         "--port", str(PORT),
         "--max-model-len", os.environ["HERMES_MAX_LEN"],
+        "--enable-prefix-caching",
     ])
+
+    # If vLLM exits (a gated model, out of memory), end the container at once
+    # instead of holding the GPU until the startup timeout.
+    def watch():
+        code = server.wait()
+        print(f"vLLM exited with code {code}; stopping the container.", flush=True)
+        os._exit(1)
+
+    threading.Thread(target=watch, daemon=True).start()

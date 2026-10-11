@@ -12,10 +12,13 @@ local files and remote endpoints are interchangeable.
 """
 
 import json
+import threading
 import time
 from pathlib import Path
 
 import httpx
+
+from hermes import runtime
 
 EMPTY = {"head": {"vars": []}, "results": {"bindings": []}}
 
@@ -48,9 +51,14 @@ class LocalStore(GraphStore):
     def __init__(self, *paths):
         self.paths = [Path(path) for path in paths]
         self._graph = None
+        self._lock = threading.Lock()
 
     @property
     def graph(self):
+        with self._lock:
+            return self._load()
+
+    def _load(self):
         if self._graph is None:
             from rdflib import Graph
 
@@ -81,9 +89,14 @@ class OxigraphStore(GraphStore):
     def __init__(self, *paths):
         self.paths = [Path(path) for path in paths]
         self._store = None
+        self._lock = threading.Lock()
 
     @property
     def store(self):
+        with self._lock:
+            return self._load()
+
+    def _load(self):
         if self._store is None:
             import pyoxigraph
 
@@ -146,6 +159,7 @@ class TimeoutStore(GraphStore):
         self.timeout = timeout
         self._process = None
         self._connection = None
+        self._lock = threading.Lock()  # one worker, one query at a time
 
     def _start(self):
         import multiprocessing
@@ -164,13 +178,14 @@ class TimeoutStore(GraphStore):
         self._process = None
 
     def query(self, sparql):
-        if self._process is None or not self._process.is_alive():
-            self._start()
-        self._connection.send(sparql)
-        if not self._connection.poll(self.timeout):
-            self._stop()
-            raise QueryError(f"query timed out after {self.timeout:g} s")
-        ok, value = self._connection.recv()
+        with self._lock:
+            if self._process is None or not self._process.is_alive():
+                self._start()
+            self._connection.send(sparql)
+            if not self._connection.poll(self.timeout):
+                self._stop()
+                raise QueryError(f"query timed out after {self.timeout:g} s")
+            ok, value = self._connection.recv()
         if not ok:
             raise QueryError(value)
         return value
@@ -209,7 +224,7 @@ class EndpointStore(GraphStore):
             try:
                 with httpx.stream(
                     "POST", self.url, data={"query": sparql}, headers=headers,
-                    timeout=self.timeout,
+                    timeout=runtime.remaining(self.timeout),
                 ) as response:
                     if response.status_code >= 500 and attempt < self.retries:
                         time.sleep(2**attempt)
@@ -260,23 +275,29 @@ class CachedStore(GraphStore):
         self.max_entries = max_entries
         self.max_rows = max_rows
         self._cache = OrderedDict()
+        self._lock = threading.Lock()
 
     def query(self, sparql):
-        if sparql in self._cache:
-            self._cache.move_to_end(sparql)
-            cached = self._cache[sparql]
-        else:
-            self.executions += 1
+        runtime.check()
+        with self._lock:
+            cached = self._cache.get(sparql)
+            if cached is not None:
+                self._cache.move_to_end(sparql)
+        if cached is None:
             started = time.perf_counter()
             try:
                 cached = self.store.query(sparql)
             except QueryError as exc:
                 cached = exc
-            self.seconds += time.perf_counter() - started
-            if _rows(cached) <= self.max_rows:
-                self._cache[sparql] = cached
-                if len(self._cache) > self.max_entries:
-                    self._cache.popitem(last=False)
+            spent = time.perf_counter() - started
+            runtime.add(graph_executions=1, graph_seconds=spent)
+            with self._lock:
+                self.executions += 1
+                self.seconds += spent
+                if _rows(cached) <= self.max_rows:
+                    self._cache[sparql] = cached
+                    if len(self._cache) > self.max_entries:
+                        self._cache.popitem(last=False)
         if isinstance(cached, QueryError):
             raise cached
         return cached

@@ -9,10 +9,13 @@ rerun of an experiment replays the same completions.
 import hashlib
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
 import httpx
+
+from hermes import runtime
 
 _OLLAMA_PREFERENCE = ("llama3.1", "llama3", "mistral", "phi3", "qwen2.5", "qwen")
 SYSTEM = (
@@ -38,14 +41,19 @@ class LLM:
     def usage(self):
         if "_usage" not in self.__dict__:
             self._usage = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "seconds": 0.0}
+            self._usage_lock = threading.Lock()
         return self._usage
 
-    def record(self, input_tokens, output_tokens, seconds):
+    def record(self, input_tokens, output_tokens, seconds, meter=True):
         usage = self.usage
-        usage["calls"] += 1
-        usage["input_tokens"] += int(input_tokens or 0)
-        usage["output_tokens"] += int(output_tokens or 0)
-        usage["seconds"] += float(seconds or 0.0)
+        with self._usage_lock:
+            usage["calls"] += 1
+            usage["input_tokens"] += int(input_tokens or 0)
+            usage["output_tokens"] += int(output_tokens or 0)
+            usage["seconds"] += float(seconds or 0.0)
+        if meter:
+            runtime.add(llm_calls=1, input_tokens=int(input_tokens or 0),
+                        output_tokens=int(output_tokens or 0), llm_seconds=float(seconds or 0.0))
 
 
 class Ollama(LLM):
@@ -66,6 +74,7 @@ class Ollama(LLM):
         return self._model
 
     def complete(self, prompt, system=SYSTEM):
+        runtime.check()
         try:
             model = self.model
             response = _with_retries(
@@ -81,7 +90,7 @@ class Ollama(LLM):
                             {"role": "user", "content": prompt},
                         ],
                     },
-                    timeout=self.timeout,
+                    timeout=runtime.remaining(self.timeout),
                 )
             )
         except httpx.ConnectError as exc:
@@ -101,7 +110,7 @@ class Ollama(LLM):
         data = response.json()
         self.record(data.get("prompt_eval_count"), data.get("eval_count"),
                     (data.get("total_duration") or 0) / 1e9)
-        return data["message"]["content"]
+        return strip_thinking(data["message"]["content"])
 
     def _installed_model(self):
         response = httpx.get(f"{self.base_url}/api/tags", timeout=5.0)
@@ -146,7 +155,7 @@ class OpenAICompatible(LLM):
     """
 
     def __init__(self, model=None, base_url=None, api_key=None, temperature=0, timeout=120.0,
-                 provider="openai"):
+                 provider="openai", extra=None):
         preset_url, key_env = PROVIDERS.get(provider, (None, "HERMES_LLM_API_KEY"))
         self.provider = provider
         self.api_key = (
@@ -164,8 +173,12 @@ class OpenAICompatible(LLM):
             raise ValueError(f"Provider {provider!r} needs a model name.")
         self.temperature = temperature
         self.timeout = timeout
+        # Extra request fields, for example {"chat_template_kwargs": {"enable_thinking": false}}
+        # to turn off Qwen3's thinking on a vLLM server.
+        self.extra = dict(extra or {})
 
     def complete(self, prompt, system=SYSTEM):
+        runtime.check()
         if not self.api_key and self.provider != "vllm":
             raise LookupError(
                 f"Set {self.key_env} (or HERMES_LLM_API_KEY) for provider {self.provider!r}."
@@ -182,8 +195,9 @@ class OpenAICompatible(LLM):
                         {"role": "system", "content": system},
                         {"role": "user", "content": prompt},
                     ],
+                    **self.extra,
                 },
-                timeout=self.timeout,
+                timeout=runtime.remaining(self.timeout),
             )
         )
         response.raise_for_status()
@@ -191,17 +205,22 @@ class OpenAICompatible(LLM):
         usage = data.get("usage") or {}
         self.record(usage.get("prompt_tokens"), usage.get("completion_tokens"),
                     time.time() - started)
-        return data["choices"][0]["message"]["content"]
+        return strip_thinking(data["choices"][0]["message"]["content"] or "")
 
 
 class CachedLLM(LLM):
-    """Decorator: replay completions from a directory of JSON files."""
+    """Decorator: replay completions from a directory of JSON files.
+
+    Its usage is the wrapped client's usage, so replayed completions cost
+    nothing; calls and hits count every request.
+    """
 
     def __init__(self, llm, directory):
         self.llm = llm
         self.directory = Path(directory)
         self.calls = 0
         self.hits = 0
+        self._lock = threading.Lock()
 
     @property
     def provider(self):
@@ -211,26 +230,37 @@ class CachedLLM(LLM):
     def model(self):
         return self.llm.model
 
+    @property
+    def usage(self):
+        return self.llm.usage
+
     def complete(self, prompt, system=SYSTEM):
+        runtime.check()
         key = hashlib.sha256(
             json.dumps([self.provider, self.model, system, prompt]).encode()
         ).hexdigest()
         path = self.directory / key[:2] / f"{key}.json"
-        self.calls += 1
+        with self._lock:
+            self.calls += 1
         if path.exists():
-            self.hits += 1
+            with self._lock:
+                self.hits += 1
             return json.loads(path.read_text(encoding="utf-8"))["completion"]
-        before = dict(self.llm.usage)
         completion = self.llm.complete(prompt, system)
-        spent = {k: self.llm.usage[k] - before[k] for k in before}
-        self.record(spent["input_tokens"], spent["output_tokens"], spent["seconds"])
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps({"model": self.model, "system": system, "prompt": prompt,
-                        "completion": completion, "usage": spent}),
+                        "completion": completion}),
             encoding="utf-8",
         )
         return completion
+
+
+def strip_thinking(text):
+    """Drop a reasoning block such as <think>...</think> that some models emit first."""
+    import re
+
+    return re.sub(r"^\s*<think>.*?</think>\s*", "", text, flags=re.DOTALL)
 
 
 def create(provider=None, cache=None, **options):
