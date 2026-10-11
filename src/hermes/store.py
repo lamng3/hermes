@@ -120,10 +120,11 @@ def local_store(*paths, engine="oxigraph"):
 class EndpointStore(GraphStore):
     """A remote SPARQL 1.1 endpoint."""
 
-    def __init__(self, url, timeout=60.0, retries=2):
+    def __init__(self, url, timeout=60.0, retries=2, max_bytes=50_000_000):
         self.url = url
         self.timeout = timeout
         self.retries = retries
+        self.max_bytes = max_bytes
 
     def query(self, sparql):
         headers = {
@@ -132,20 +133,36 @@ class EndpointStore(GraphStore):
         }
         for attempt in range(self.retries + 1):
             try:
-                response = httpx.post(
-                    self.url, data={"query": sparql}, headers=headers, timeout=self.timeout
-                )
-                if response.status_code >= 500 and attempt < self.retries:
-                    time.sleep(2**attempt)
-                    continue
+                with httpx.stream(
+                    "POST", self.url, data={"query": sparql}, headers=headers,
+                    timeout=self.timeout,
+                ) as response:
+                    if response.status_code >= 500 and attempt < self.retries:
+                        time.sleep(2**attempt)
+                        continue
+                    body = self._read(response)
                 if response.status_code >= 400:
-                    raise QueryError(f"HTTP {response.status_code}: {response.text[:300]}")
-                return response.json()
+                    text = body[:300].decode(errors="replace")
+                    raise QueryError(f"HTTP {response.status_code}: {text}")
+                return json.loads(body)
             except (httpx.TransportError, json.JSONDecodeError) as exc:
                 if attempt == self.retries:
                     raise QueryError(f"{self.url}: {exc}") from exc
                 time.sleep(2**attempt)
         raise QueryError(f"{self.url}: no response")
+
+    def _read(self, response):
+        """Read the body, refusing results larger than max_bytes."""
+        chunks, size = [], 0
+        for chunk in response.iter_bytes():
+            size += len(chunk)
+            if size > self.max_bytes:
+                raise QueryError(
+                    f"result larger than {self.max_bytes // 1_000_000} MB; "
+                    "add constraints or a LIMIT"
+                )
+            chunks.append(chunk)
+        return b"".join(chunks)
 
     def __repr__(self):
         return f"EndpointStore({self.url})"
