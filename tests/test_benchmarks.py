@@ -232,3 +232,47 @@ def test_sweeps_expand_benchmarks_systems_and_models(tmp_path, monkeypatch):
     assert latest_unfinished(tmp_path / "r", gpu) == "20260101-000000"
     (run / "metrics.json").write_text("{}")
     assert latest_unfinished(tmp_path / "r", gpu) is None
+
+
+def test_concurrent_items_overlap_and_keep_exact_costs(data, tmp_path):
+    import time
+
+    from hermes import systems
+
+    def slow(question, kg, context):
+        kg.query("ASK { ?s ?p ?o }")
+        time.sleep(0.6)
+        return gold_system(question, kg, context)
+
+    if "slow-test" not in systems.available():
+        systems.register("slow-test")(slow)
+    config = {"name": "par", "benchmark": "oly", "system": "slow-test", "params": {},
+              "llm": {}, "concurrency": 3}
+    started = time.time()
+    metrics = Run(config, results=tmp_path / "r", run_id="p", llm=ScriptedLLM([])).execute()
+    assert time.time() - started < 1.6          # three 0.6 s items overlapped
+    assert metrics["official"]["average"]["set_F"] == 1.0
+    rows = [json.loads(line) for line in
+            (tmp_path / "r" / "oly" / "par" / "p" / "predictions.jsonl").read_text().splitlines()]
+    assert sorted(row["id"] for row in rows) == ["oly:1-de", "oly:1-en", "oly:2-en"]
+
+
+def test_deadlines_stop_items_in_worker_threads(data, tmp_path):
+    import time
+
+    from hermes import systems
+
+    def busy(question, kg, context):
+        for k in range(100):
+            kg.query(f"ASK {{ ?s ?p {k} }}")
+            time.sleep(0.05)
+        return gold_system(question, kg, context)
+
+    if "busy-test" not in systems.available():
+        systems.register("busy-test")(busy)
+    config = {"name": "busy", "benchmark": "oly", "system": "busy-test", "params": {},
+              "llm": {}, "concurrency": 2, "limits": {"item_seconds": 0.5}}
+    started = time.time()
+    metrics = Run(config, results=tmp_path / "r", llm=ScriptedLLM([])).execute()
+    assert time.time() - started < 4
+    assert metrics["errors"] == 3

@@ -138,3 +138,10 @@ def test_provider_presets(monkeypatch):
         llm.create(provider="vllm", model="m")
     with pytest.raises(ValueError, match="Unknown"):
         llm.create(provider="nope")
+
+
+def test_thinking_blocks_are_stripped():
+    from hermes.llm import strip_thinking
+
+    assert strip_thinking("<think>\nhmm\n</think>\n\nSELECT ?x") == "SELECT ?x"
+    assert strip_thinking("SELECT ?x") == "SELECT ?x"

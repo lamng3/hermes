@@ -28,7 +28,7 @@ from pathlib import Path
 
 import yaml
 
-from hermes import benchmarks, llm as llms, systems
+from hermes import benchmarks, llm as llms, runtime, systems
 from hermes.context import Context, Example
 from hermes.evaluation import aggregate, score
 from hermes.store import QueryError
@@ -189,12 +189,10 @@ class Run:
         for observer in self.observers:
             observer.on_start(self, items)
         started = time.time()
+        pending = [item for item in items if item.id not in records]
         with (self.directory / "predictions.jsonl").open("a", encoding="utf-8") as handle:
-            for item in items:
-                if item.id in records:
-                    continue
-                record = self.evaluate(item)
-                records[item.id] = record
+            for record in self._evaluate_all(pending):
+                records[record["id"]] = record
                 handle.write(json.dumps(record, ensure_ascii=False) + "\n")
                 handle.flush()
                 for observer in self.observers:
@@ -207,19 +205,40 @@ class Run:
             observer.on_end(self, metrics)
         return metrics
 
+    def _evaluate_all(self, items):
+        """Yield records as items finish; several at once when concurrency > 1.
+
+        Concurrent items let a model server such as vLLM batch their requests.
+        """
+        workers = int(self.config.get("concurrency") or 1)
+        if workers <= 1:
+            for item in items:
+                yield self.evaluate(item)
+            return
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(self.evaluate, item) for item in items]
+            for future in as_completed(futures):
+                yield future.result()
+
     def evaluate(self, item):
         """Template: predict, execute, score."""
         context = Context(examples=self.examples)
         if self.config.get("leak_gold"):
             context.answers = [v for v, g in self.benchmark.gold.get(item.id, {}).items() if g]
-        spent_before = self._spent()
+        with runtime.meter() as spent:
+            return self._evaluate(item, context, spent)
+
+    def _evaluate(self, item, context, spent):
         started = time.time()
         output, error = {}, ""
+        budget = self.limits["item_seconds"]
         try:
-            with time_limit(self.limits["item_seconds"]):
+            with time_limit(budget), runtime.deadline(budget):
                 output = self.system(item.question, self.kg, context)
-        except ItemTimeout:
-            error = f"ItemTimeout: stopped after {self.limits['item_seconds']} s"
+        except (ItemTimeout, runtime.ItemTimeout):
+            error = f"ItemTimeout: stopped after {budget} s"
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
         seconds = time.time() - started
@@ -234,31 +253,19 @@ class Run:
         order = item.id in self.benchmark.order_required
         extra = {k: v for k, v in output.items() if k not in ("sparql", "model", "provider")} \
             if isinstance(output, dict) else {}
-        spent = {k: round(v - spent_before[k], 3) for k, v in self._spent().items()}
+        cost = {k: round(v, 3) for k, v in spent.items()}
         return {
             "id": item.id,
             "question": item.question,
             "sparql": sparql,
             "error": error,
-            "cost": spent,
+            "cost": cost,
             "gold_reproduces": self.gold_reproduces(item, gold, order),
             "seconds": round(seconds, 3),
             "scores": score(result, gold, order),
             "strict": score(result, gold, order, strict=True),
             "answers": len(result.get("results", {}).get("bindings", [])) if result else 0,
             "extra": extra,
-        }
-
-    def _spent(self):
-        """Model and graph usage so far: calls, tokens, seconds, executions."""
-        usage = getattr(self.llm, "usage", {}) or {}
-        return {
-            "llm_calls": usage.get("calls", 0),
-            "input_tokens": usage.get("input_tokens", 0),
-            "output_tokens": usage.get("output_tokens", 0),
-            "llm_seconds": usage.get("seconds", 0.0),
-            "graph_executions": self.kg.executions,
-            "graph_seconds": self.kg.store.seconds,
         }
 
     def gold_reproduces(self, item, gold, order):

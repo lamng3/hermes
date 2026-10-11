@@ -7,6 +7,7 @@ scanning labels is too slow. `linker_for` picks one from the store type.
 """
 
 import re
+import threading
 
 LABELS = (
     "http://www.w3.org/2000/01/rdf-schema#label",
@@ -40,11 +41,16 @@ class LabelIndex(Linker):
         self.kg = kg
         self._names = None
         self._labels = None
+        self._lock = threading.Lock()
 
     def _load(self):
-        if self._names is not None:
-            return
-        self._names, self._labels = {}, {}
+        with self._lock:
+            if self._names is None:
+                self._index()
+
+    def _index(self):
+        names, labels = {}, {}
+        self._names, self._labels = names, labels
         predicates = " ".join(f"<{iri}>" for iri in LABELS)
         result = self.kg.try_query(
             f"SELECT ?s ?l WHERE {{ VALUES ?p {{ {predicates} }} ?s ?p ?l FILTER(isIRI(?s)) }}"
