@@ -27,9 +27,8 @@ import json
 import re
 from dataclasses import MISSING, dataclass, field, fields, replace
 
-from rdflib.plugins.sparql import prepareQuery
-
 from hermes.linking import linker_for
+from hermes.validate import parse_error
 
 CORE_PREFIXES = (
     ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
@@ -455,10 +454,9 @@ class Explorer:
             self.rejected += 1
             return Observation(label, sparql, ok=False,
                                error="kernel: " + "; ".join(judgment.errors), judgment=judgment)
-        try:
-            prepareQuery(sparql)
-        except Exception as exc:
-            return Observation(label, sparql, ok=False, error=_first_line(exc))
+        error = parse_error(sparql)
+        if error:
+            return Observation(label, sparql, ok=False, error=error.splitlines()[0][:300])
         try:
             if plan.form == "ASK":
                 answer = bool(self.kg.query(sparql).get("boolean"))

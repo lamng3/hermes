@@ -98,3 +98,20 @@ def test_guardrails_declare_known_prefixes_the_draft_forgot():
     assert fixed.startswith("PREFIX pv: <http://ld.company.org/prod-vocab/>\nPREFIX rdfs:")
     assert parse_error(fixed) is None
     assert apply_stages(fixed, vocabulary, Context()) == fixed
+
+
+def test_parsing_is_safe_across_threads():
+    from concurrent.futures import ThreadPoolExecutor
+
+    # Distinct queries (defeating pyparsing's cache) corrupt an unguarded parser
+    # for the rest of the process: every later parse fails.
+    def query(i):
+        return (
+            "PREFIX ex: <http://example.org/demo#>\n"
+            f"SELECT DISTINCT ?c (COUNT(?x{i}) AS ?n) WHERE {{ ?c a ex:City ; ex:name ?x{i} . "
+            f'FILTER(CONTAINS(?x{i}, "a{i}")) }} GROUP BY ?c ORDER BY DESC(?n) LIMIT {i % 7 + 1}'
+        )
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        errors = list(pool.map(lambda i: parse_error(query(i)), range(600)))
+    assert errors == [None] * 600

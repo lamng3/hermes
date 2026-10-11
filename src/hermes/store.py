@@ -69,8 +69,11 @@ class LocalStore(GraphStore):
         return self._graph
 
     def query(self, sparql):
+        from hermes.validate import _PARSE_LOCK  # rdflib's parser is not thread-safe
+
         try:
-            result = self.graph.query(sparql)
+            with _PARSE_LOCK:
+                result = self.graph.query(sparql)
             if result.type not in ("SELECT", "ASK"):
                 return EMPTY
             return json.loads(result.serialize(format="json"))
