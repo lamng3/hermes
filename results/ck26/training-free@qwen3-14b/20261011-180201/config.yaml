@@ -1,0 +1,16 @@
+concurrency: 16
+limits:
+  query_seconds: 30
+  item_seconds: 300
+system: training-free
+benchmark: ck26
+name: training-free@qwen3-14b
+llm:
+  provider: vllm
+  model: Qwen/Qwen3-14B
+  base_url: https://lamng3-work--hermes-vllm-qwen3-14b-serve.modal.run/v1
+  extra:
+    chat_template_kwargs:
+      enable_thinking: false
+  cache: .cache/llm
+params: {}

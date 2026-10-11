@@ -1,0 +1,26 @@
+{
+  "config": "training-free@qwen3-4b",
+  "benchmark": "ck26",
+  "system": "training-free",
+  "model": "Qwen/Qwen3-4B",
+  "provider": "vllm",
+  "llm_calls": 200,
+  "llm_cache_hits": 2,
+  "graph_executions": 79,
+  "graph_seconds": 9.8,
+  "llm_model_calls": 198,
+  "input_tokens": 90809,
+  "output_tokens": 16760,
+  "llm_seconds": 316.9,
+  "contaminated_examples": 0,
+  "limits": {
+    "query_seconds": 30,
+    "item_seconds": 300
+  },
+  "items": 100,
+  "wall_seconds": 67.3,
+  "git_commit": "38f7cc4e075db323f6dd2fae5da7b74544b1b2b1",
+  "git_dirty": false,
+  "python": "3.11.12",
+  "finished": "2026-10-11T17:54:45"
+}
