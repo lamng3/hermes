@@ -364,6 +364,11 @@ def _git_state():
             ["git", *args], capture_output=True, text=True, check=True
         ).stdout.strip()
 
+    import os
+
+    if os.environ.get("HERMES_GIT_COMMIT"):  # set by remote runners such as Modal
+        return {"commit": os.environ["HERMES_GIT_COMMIT"],
+                "dirty": os.environ.get("HERMES_GIT_DIRTY") == "1"}
     try:
         dirty = bool(git("status", "--porcelain", "--untracked-files=no", "--", "src"))
         return {"commit": git("rev-parse", "HEAD"), "dirty": dirty}
