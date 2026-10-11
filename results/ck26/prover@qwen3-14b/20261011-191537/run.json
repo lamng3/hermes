@@ -1,0 +1,26 @@
+{
+  "config": "prover@qwen3-14b",
+  "benchmark": "ck26",
+  "system": "prover",
+  "model": "Qwen/Qwen3-14B",
+  "provider": "vllm",
+  "llm_calls": 1265,
+  "llm_cache_hits": 0,
+  "graph_executions": 952,
+  "graph_seconds": 43.0,
+  "llm_model_calls": 1265,
+  "input_tokens": 2855863,
+  "output_tokens": 24471,
+  "llm_seconds": 2259.6,
+  "contaminated_examples": 0,
+  "limits": {
+    "query_seconds": 30,
+    "item_seconds": 300
+  },
+  "items": 100,
+  "wall_seconds": 158.8,
+  "git_commit": "f763f879ead2c9e714aca24bc8af4f0f4c57de9c",
+  "git_dirty": false,
+  "python": "3.11.12",
+  "finished": "2026-10-11T19:18:16"
+}
