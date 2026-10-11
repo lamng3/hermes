@@ -1,0 +1,10 @@
+benchmark: ck26
+system: uniqgen
+leak_gold: true
+params:
+  oracle: gold
+llm:
+  provider: ollama
+  model: llama3.1
+  cache: .cache/llm
+name: uniqgen-gold-oracle

@@ -1,0 +1,16 @@
+{
+  "config": "uniqgen-gold-oracle",
+  "benchmark": "ck26",
+  "system": "uniqgen",
+  "model": "llama3.1",
+  "provider": "ollama",
+  "llm_calls": 139,
+  "llm_cache_hits": 139,
+  "graph_executions": 4051,
+  "contaminated_examples": 0,
+  "items": 100,
+  "wall_seconds": 2233.0,
+  "git_commit": "fd39d4828a86cf7b73281623af82ac74e9011eaf",
+  "python": "3.11.14",
+  "finished": "2026-10-11T01:57:35"
+}

@@ -1,0 +1,16 @@
+{
+  "config": "algebra-agent",
+  "benchmark": "ck26",
+  "system": "algebra-agent",
+  "model": "llama3.1",
+  "provider": "ollama",
+  "llm_calls": 1451,
+  "llm_cache_hits": 0,
+  "graph_executions": 422,
+  "contaminated_examples": 0,
+  "items": 100,
+  "wall_seconds": 2425.4,
+  "git_commit": "9b92b4b4450965c2b48d3023bd9d8989f70ec2a1",
+  "python": "3.11.14",
+  "finished": "2026-10-11T02:46:48"
+}

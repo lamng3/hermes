@@ -1,0 +1,16 @@
+{
+  "config": "uniqgen",
+  "benchmark": "ck26",
+  "system": "uniqgen",
+  "model": "llama3.1",
+  "provider": "ollama",
+  "llm_calls": 198,
+  "llm_cache_hits": 3,
+  "graph_executions": 667,
+  "contaminated_examples": 0,
+  "items": 100,
+  "wall_seconds": 2136.1,
+  "git_commit": "f43c587122049f1bf2abf7322ad36b964fe55a76",
+  "python": "3.11.14",
+  "finished": "2026-10-11T01:20:22"
+}
