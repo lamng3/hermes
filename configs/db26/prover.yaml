@@ -1,0 +1,9 @@
+# The algebra agent with the Lean-style kernel: goal first, typed steps, finish gated on open goals.
+benchmark: db26
+system: prover
+params:
+  max_steps: 15
+llm:
+  provider: ollama
+  model: llama3.1
+  cache: .cache/llm

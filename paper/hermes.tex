@@ -12,7 +12,7 @@
 
 \begin{document}
 
-\title[Hermes: Planning over the SPARQL Algebra]{Hermes: Natural Language to SPARQL as Planning over the SPARQL Algebra}
+\title[Hermes: Verified Query Planning]{Hermes: Verified Query Planning over the SPARQL Algebra with Language Agents}
 
 \author{Lam Nguyen}
 \affiliation{%
@@ -24,13 +24,14 @@
 
 \begin{abstract}
 Text-to-query systems usually emit a whole query, then repair it.
-Hermes treats the SPARQL 1.1 algebra as the action space instead.
-A plan grows by one operator at a time, and execution on the graph
-after each operator reports the cardinality, how that cardinality
-moved, a sample of rows, and any error.
-A kernel in the style of Lean checks scoping, aggregation, and schema
-types before a plan is allowed to run, and it refuses to finish while
-a goal is still open.
+Hermes instead answers a question by planning: a language agent builds
+the query one operator of the SPARQL 1.1 algebra at a time, and
+execution on the graph after each operator reports the cardinality, how
+it moved, a sample of rows, and any error.
+The algebra is formalized the way Lean formalizes mathematics.
+The agent first states the question as a goal, the operators act as
+tactics, and a kernel checks scoping, aggregation, and schema types
+before any plan runs, refusing to finish while a goal is open.
 Prompt-only generation and a reimplementation of UniQGen sit in the
 same system, on the same graphs, behind a scorer that reproduces the
 published Text2SPARQL 2026 numbers and that also reports a strict
@@ -56,9 +57,12 @@ graph can run.
 The usual pipeline asks a model for a complete SPARQL string and, if
 the string fails to parse or returns nothing, asks again
 \cite{liu2024texttosql,wang2026uniqgen}.
+Agents that explore the graph before answering
+\cite{liu2024spinach,xiong2024interactive,brei2025aruqula} still write
+the query as one string.
 Query optimizers work at a finer grain.
-They apply one algebraic operator, estimate the effect, and keep or
-discard the step \cite{deutsch1999chase}.
+They consider one algebraic rewrite at a time, estimate its effect, and
+keep or discard it \cite{selinger1979access}.
 Hermes uses that grain for natural language to SPARQL.
 The operators of the SPARQL 1.1 algebra \cite{sparql11} are the
 actions.
@@ -98,7 +102,7 @@ and the query form (\texttt{SELECT} or \texttt{ASK}).
 Rendering the plan is deterministic.
 An action is a pure function from one plan to the next.
 Table~\ref{tab:actions} lists them against the SPARQL 1.1 algebra
-\cite{sparql11}.
+\cite{sparql11,perez2009semantics}.
 Two further actions read the graph and leave the plan unchanged.
 \texttt{lookup} finds entities whose label contains a string.
 \texttt{inspect} lists predicates around an entity or a class.
@@ -173,8 +177,8 @@ the vocabulary, the current plan as SPARQL, and the observation after
 every earlier action, and it replies with one JSON action.
 The loop ends on \texttt{finish} or after 15 steps, and the result is
 the last plan that ran.
-Repeated actions are rejected in the prompt so the model has to choose
-something else.
+An action identical to the previous one is not executed; the model is
+told to choose another.
 UniQGen's Chase and Backchase, in these terms, is a beam search over
 \texttt{remove} and \texttt{triple}.
 
@@ -238,6 +242,18 @@ The prompt shows the proof state each turn: the typing context and the
 open goals.
 Ill-typed steps increment a rejection counter and never reach the store.
 
+The analogy has a limit, and it locates the hard part.
+LLM provers for Lean \cite{yang2023leandojo} search for tactics against
+a theorem a person wrote, and a proof the kernel accepts is correct.
+Here the goal is written by the model from the question, which is
+autoformalization \cite{wu2022autoformalization}.
+The kernel guarantees that an accepted plan is well formed, typed
+against the schema, and shaped like its goal.
+It does not guarantee that the goal is the question: a well-typed query
+can still answer a different one.
+Execution feedback, the analogue of evaluating terms in Lean, is the
+remaining evidence for that step.
+
 The prover is the algebra agent with this kernel installed.
 It has an implementation and tests.
 It does not yet have an experiment configuration, so
@@ -248,8 +264,8 @@ Section~\ref{sec:results} does not report it.
 Hermes is a small runtime around that loop.
 A system is any callable from a question, a knowledge graph, and an
 optional context to a SPARQL string.
-The context can carry text, linked entities, and, for ablations only,
-reference answers.
+The context can carry text, example question--query pairs, and, for
+ablations only, reference answers.
 Four systems are registered: \texttt{training-free}, \texttt{uniqgen},
 \texttt{algebra-agent}, and \texttt{prover}.
 Another package can add one through the \texttt{hermes.systems} entry
@@ -259,8 +275,9 @@ experiment files pass constructor arguments (\texttt{beam\_width},
 \texttt{max\_steps}, and so on) without code changes.
 
 The one-shot system prompts a single draft from the ontology
-vocabulary, runs a fixed sequence of repairs over prefixes and labels,
-and, if the draft does not parse, makes one further model call with the
+vocabulary, passes it through a fixed sequence of stages (today only a
+guardrail that declares known prefixes the draft uses but omits), and,
+if the draft does not parse, makes one further model call with the
 parser error.
 UniQGen follows the three stages of Wang et al.\ \cite{wang2026uniqgen},
 rendered to SPARQL on whatever store is configured.
@@ -340,9 +357,10 @@ Per question it reports set precision, set recall, and set $F_1$.
 Where the organizers mark order as significant it also reports nDCG.
 The headline \texttt{set\_F\_ndcg} is nDCG on those questions and set
 $F_1$ elsewhere.
-A checker rescores every published Text2SPARQL 2026 prediction; the
-project reports that all 5,024 per-question and average numbers match
-the official files.
+Rescoring every published Text2SPARQL 2026 prediction reproduces all
+5,024 per-question and average numbers in the official files exactly;
+\texttt{experiments/check\_scorer.py} repeats the check from the pinned
+sources.
 Runs report three aggregates side by side, because they answer
 different questions: the official metrics on every item, a strict
 variant, and the official metrics on the items whose gold query
@@ -464,10 +482,52 @@ No DB26, QALD, or model-scaling number is included.
   \end{tabular}
 \end{table}
 
+\section{Related Work}
+
+\paragraph{Text-to-SQL.}
+Liu et al.\ survey LLM-based text-to-SQL by pipeline stage: schema
+linking and example selection before translation, self-correction and
+execution-guided selection after it \cite{liu2024texttosql}.
+Alpha-SQL builds SQL step by step with Monte Carlo tree search, using an
+LLM to propose construction actions and a self-supervised reward to
+score candidates \cite{li2025alphasql}.
+Its actions are reasoning steps toward SQL text rather than operators
+of the relational algebra, and no schema typing is enforced between
+steps.
+
+\paragraph{Grounded KBQA and agents.}
+Pangu lets a symbolic agent grow valid plans over the knowledge base
+while a language model only discriminates between them
+\cite{gu2023pangu}; it is the closest prior design to incremental,
+execution-backed plan building, but its plans are its own logical forms
+over Freebase, and its language model scores candidates instead of
+reading execution feedback.
+Middleware tools give an LLM functions such as relation and neighbor
+lookups over large knowledge bases \cite{gu2024middleware}, and
+Interactive-KBQA exposes generic KB APIs across multi-turn interaction
+\cite{xiong2024interactive}.
+Their action sets are task-specific functions, not the query algebra.
+
+\paragraph{Natural language to SPARQL.}
+SPINACH explores Wikidata by executing SPARQL as it reasons and reports
+strong results on QALD-9-plus and QALD-10 \cite{liu2024spinach};
+ARUQULA builds on it for the first Text2SPARQL challenge
+\cite{brei2025aruqula,text2sparql2025}.
+These agents use execution as feedback, but each step is a whole query
+string.
+UniQGen \cite{wang2026uniqgen} searches over a table of constraints
+with Chase and Backchase \cite{deutsch1999chase} against reference
+answers.
+Hermes differs in three ways: the action space is the SPARQL algebra
+itself; each operator is observed (and can be previewed) before it is
+kept; and a kernel types each step against the RDF schema before it
+runs, so methods such as UniQGen become policies over one space.
+
 \section{Conclusion}
 
-Hermes makes natural language to SPARQL a planning problem whose
-actions are the SPARQL algebra and whose feedback is execution.
+Hermes makes natural language to SPARQL a verified planning problem:
+the actions are the SPARQL algebra, the feedback is execution, and a
+kernel checks every step against a stated goal.
 A Lean-style kernel types each step against the schema and holds the
 goal open until the plan discharges it.
 The one-shot baseline and UniQGen already run behind that interface,

@@ -103,6 +103,7 @@ class Run:
         )
         items = self.items()
         records = self._completed()
+        self.code = _git_state()
         for observer in self.observers:
             observer.on_start(self, items)
         started = time.time()
@@ -201,7 +202,8 @@ class Run:
             "contaminated_examples": self.contamination,
             "items": len(records),
             "wall_seconds": round(wall, 1),
-            "git_commit": _git_commit(),
+            "git_commit": self.code["commit"],
+            "git_dirty": self.code["dirty"],
             "python": platform.python_version(),
             "finished": datetime.now().isoformat(timespec="seconds"),
         }
@@ -248,13 +250,19 @@ def _percentiles(values):
     return {"p50": at(0.5), "p95": at(0.95), "mean": round(sum(values) / len(values), 3)}
 
 
-def _git_commit():
-    try:
+def _git_state():
+    """The commit a run starts from, and whether tracked code had local changes."""
+
+    def git(*args):
         return subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+            ["git", *args], capture_output=True, text=True, check=True
         ).stdout.strip()
+
+    try:
+        dirty = bool(git("status", "--porcelain", "--untracked-files=no", "--", "src"))
+        return {"commit": git("rev-parse", "HEAD"), "dirty": dirty}
     except (OSError, subprocess.CalledProcessError):
-        return ""
+        return {"commit": "", "dirty": None}
 
 
 def _write_json(path, data):
