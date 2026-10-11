@@ -119,8 +119,10 @@ def outcomes(runs, out):
 
 
 def cost(runs, out):
-    """F1 against model calls per item."""
-    fig, ax = plt.subplots(figsize=(COLUMN, 1.75))
+    """(a) F1 against model calls per item; (b) seconds per item."""
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(2 * COLUMN + 0.33, 1.8), gridspec_kw={"width_ratios": [1, 1.15]}
+    )
     for config, data in runs.items():
         label, color, hatched = METHODS[config]
         items = data["metrics"]["items"]
@@ -128,19 +130,53 @@ def cost(runs, out):
         f1 = data["metrics"]["official"]["average"]["set_F"]
         if config == "uniqgen-gold-oracle":
             calls = runs["uniqgen"]["run"]["llm_calls"] / items if "uniqgen" in runs else calls
-        ax.scatter(calls, f1, s=42, color="white" if hatched else color, edgecolor=color,
-                   linewidth=1.6, zorder=3)
+        left.scatter(calls, f1, s=42, color="white" if hatched else color, edgecolor=color,
+                     linewidth=1.6, zorder=3)
         offset = {"uniqgen-gold-oracle": (6, 2), "uniqgen": (6, -9)}.get(config, (6, -3))
-        ax.annotate(f"{label}  {f1:.3f}", (calls, f1), textcoords="offset points",
-                    xytext=offset, fontsize=6.5, color=INK)
-    ax.set_xscale("log")
-    ax.set_xlim(0.8, 40)
-    ax.set_ylim(0, 0.12)
-    ax.set_xticks([1, 2, 5, 10, 20], ["1", "2", "5", "10", "20"])
-    ax.minorticks_off()
-    ax.set_xlabel("model calls per item (log scale)")
-    ax.set_ylabel("set $F_1$ (CK26)")
-    clean(ax, "both")
+        left.annotate(f"{label}  {f1:.3f}", (calls, f1), textcoords="offset points",
+                      xytext=offset, fontsize=6.5, color=INK)
+    left.set_xscale("log")
+    left.set_xlim(0.8, 40)
+    left.set_ylim(0, 0.12)
+    left.set_xticks([1, 2, 5, 10, 20], ["1", "2", "5", "10", "20"])
+    left.minorticks_off()
+    left.set_xlabel("model calls per item (log scale)")
+    left.set_ylabel("set $F_1$ (CK26)")
+    left.set_title("(a) accuracy against model calls", loc="left")
+    clean(left, "both")
+
+    floor = 0.05  # cached replays take ~0 s; plot them at the floor
+    order = [c for c in ("training-free", "uniqgen", "uniqgen-gold-oracle", "algebra-agent", "prover")
+             if c in runs]
+    for row, config in enumerate(order):
+        label, color, hatched = METHODS[config]
+        seconds = sorted(max(r["seconds"], floor) for r in runs[config]["rows"])
+        jitter = [((k * 37) % 11 - 5) / 22 for k in range(len(seconds))]
+        right.scatter(seconds, [row + j for j in jitter], s=7,
+                      color="white" if hatched else color, edgecolor=color, linewidth=0.7,
+                      alpha=0.85, zorder=3)
+        raw = sorted(r["seconds"] for r in runs[config]["rows"])
+        median = raw[min(len(raw) - 1, int(0.5 * len(raw)))]  # the runner's p50
+        shown = max(median, floor)
+        right.plot([shown, shown], [row - 0.32, row + 0.32], color=INK, linewidth=1.4, zorder=4)
+        text = "median <0.1 s" if median < 0.1 else f"median {median:.1f} s"
+        right.annotate(text, (shown, row - 0.32), textcoords="offset points", xytext=(3, 0),
+                       ha="left", va="bottom", fontsize=5.5, color=INK)
+        slowest = max(runs[config]["rows"], key=lambda r: r["seconds"])
+        if slowest["seconds"] > 300:
+            right.annotate(f"{slowest['seconds']:,.0f} s, one item", (slowest["seconds"], row),
+                           textcoords="offset points", xytext=(-4, 6), ha="right",
+                           fontsize=5.5, color=MUTED)
+    right.set_yticks(range(len(order)), [METHODS[c][0] for c in order])
+    right.invert_yaxis()
+    right.set_xscale("log")
+    right.set_xlim(floor * 0.8, 4000)
+    right.set_xticks([0.1, 1, 10, 100, 1000], ["0.1", "1", "10", "100", "1000"])
+    right.minorticks_off()
+    right.set_xlabel("seconds per item (log scale; cached replays at 0.05)")
+    right.set_title("(b) time per item", loc="left")
+    clean(right)
+    fig.tight_layout(w_pad=2.0)
     fig.savefig(out / "cost.pdf")
     plt.close(fig)
 

@@ -248,8 +248,9 @@ count, the change in count, the row sample, and the error message.]}
 All runs execute on one laptop (Apple M2 Pro, 16\,GB) with the model
 served locally, so no run pays for API calls; cost is model calls,
 graph executions, and time.
-Table~\ref{tab-cost} reports them per run, and Figure~\ref{fig-cost}
-sets accuracy against model calls.
+Table~\ref{tab-cost} reports them per run; Figure~\ref{fig-cost}(a)
+sets accuracy against model calls, and Figure~\ref{fig-cost}(b) shows
+the time of every item.
 
 \stitle{Model calls}.
 \hermes{}$^-$ ends with a runnable query on 96 of 100 items, against 59
@@ -267,8 +268,9 @@ CGS takes 35.6 minutes (15.1\,s median, 58.1\,s at the 95th
 percentile): its beam search runs 667 graph executions, and its slowest
 items are those with large constraint tables.
 \hermes{}$^-$ takes 40.4 minutes (24.4\,s median, 34.6\,s at the 95th
-percentile), and its time is the most predictable of the three because
-every item is bounded by the 15-step budget.
+percentile), and its time is the most predictable of the three: every
+item falls between about 6 and 50\,s (Figure~\ref{fig-cost}(b)),
+because the 15-step budget bounds each one.
 Graph executions stay cheap for the planner: memoization keeps it at
 422, below the 667 of CGS.
 The gold-oracle ablation shows the risk of search without a time
@@ -282,14 +284,16 @@ simple guard that both search and planning need.
 the model and the graph store, which runs record from the corrected
 rerun onward.]}
 
-\begin{figure}[t]
+\begin{figure*}[t]
   \centering
-  \includegraphics[width=\columnwidth]{fig/cost.pdf}
-  \caption{Set $F_1$ against model calls per item on CK26 (Llama~3.1 8B). Hollow
-    markers are ablations: CGS with gold reference answers, and \hermes
-    without the verifier.}
+  \includegraphics[width=\textwidth]{fig/cost.pdf}
+  \caption{Cost on CK26 (Llama~3.1 8B, one laptop). (a) Set $F_1$
+    against model calls per item. (b) Seconds per item, one dot per
+    item, with the median as a bar; items replayed from the cache are
+    drawn at 0.05\,s. Hollow markers are ablations: CGS with gold
+    reference answers, and \hermes without the verifier.}
   \label{fig-cost}
-\end{figure}
+\end{figure*}
 
 \begin{table}[t]
   \caption{Time and cost per run on CK26 (100 items, Llama~3.1 8B on
