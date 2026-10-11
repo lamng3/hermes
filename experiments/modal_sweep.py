@@ -78,6 +78,8 @@ def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False, fresh=F
             print(f"{config['benchmark']}/{config['name']} (done: {done})")
             continue
         resume = None if fresh else latest_unfinished("results", config)
+        if fresh:
+            config["llm"]["refresh_cache"] = True
         print(f"{config['benchmark']}/{config['name']}" + (f" (resuming {resume})" if resume else ""))
         try:
             metrics = Run(config, "results", resume, observers=[Progress()]).execute()

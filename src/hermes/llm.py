@@ -219,12 +219,15 @@ class CachedLLM(LLM):
     """Decorator: replay completions from a directory of JSON files.
 
     Its usage is the wrapped client's usage, so replayed completions cost
-    nothing; calls and hits count every request.
+    nothing; calls and hits count every request. With refresh, every request
+    goes to the model and the cache is only written, so a fresh run measures
+    real time and tokens.
     """
 
-    def __init__(self, llm, directory):
+    def __init__(self, llm, directory, refresh=False):
         self.llm = llm
         self.directory = Path(directory)
+        self.refresh = refresh
         self.calls = 0
         self.hits = 0
         self._lock = threading.Lock()
@@ -251,7 +254,7 @@ class CachedLLM(LLM):
         path = self.directory / key[:2] / f"{key}.json"
         with self._lock:
             self.calls += 1
-        if path.exists():
+        if path.exists() and not self.refresh:
             with self._lock:
                 self.hits += 1
             return json.loads(path.read_text(encoding="utf-8"))["completion"]
@@ -272,7 +275,7 @@ def strip_thinking(text):
     return re.sub(r"^\s*<think>.*?</think>\s*", "", text, flags=re.DOTALL)
 
 
-def create(provider=None, cache=None, **options):
+def create(provider=None, cache=None, refresh_cache=False, **options):
     """Factory: build a client from a config section.
 
     provider is "ollama" (local, the default) or a key of PROVIDERS:
@@ -286,7 +289,7 @@ def create(provider=None, cache=None, **options):
     else:
         known = ", ".join(["ollama", *PROVIDERS])
         raise ValueError(f"Unknown LLM provider {provider!r}. Use one of: {known}.")
-    return CachedLLM(llm, cache) if cache else llm
+    return CachedLLM(llm, cache, refresh_cache) if cache else llm
 
 
 def from_env():
@@ -304,7 +307,8 @@ def _with_retries(send, attempts=3):
     for attempt in range(attempts):
         try:
             response = send()
-        except (httpx.ReadError, httpx.RemoteProtocolError):
+        except (httpx.ReadError, httpx.RemoteProtocolError, httpx.TimeoutException,
+                httpx.ConnectError):
             if attempt == attempts - 1:
                 raise
         else:
