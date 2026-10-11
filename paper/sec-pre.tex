@@ -19,11 +19,12 @@ $I$, $L$, $V$ & IRIs, literals, variables ($?x$) \\
 $O=(C,E)$ & ontology: classes $C$, properties $E$ \\
 $\dom$, $\rng$; $\sub$ & domain and range of a property; subclass order \\
 $D$; $\Lit$ & datatypes; literal types ($D$ and \kw{rdfs{:}Literal}) \\
-$\pi$ & plan $(T, F, J, X, K, A, H, R, \Pi, \delta, \ell, f)$ (Definition~\ref{def-plan}) \\
-$\beta(\pi)$, $\beta^+(\pi)$ & variables bound by $\pi$; with aggregate aliases \\
-$\Gamma_\pi$ & typing context of $\pi$ \\
-$O \entails \pi$ & $\pi$ is valid against $O$ \\
-$\sigma=(\vec{a},\kappa,c,m)$; $\pi \models \sigma$ & goal; $\pi$ satisfies $\sigma$ \\
+$Q$ & plan $(T, F, J, X, K, A, H, R, \Pi, \delta, \ell, f)$ (Definition~\ref{def-plan}) \\
+$\bowtie$, $\opsel$, $\opproj$, $\opgrp$, $\opord$, $\opslice$ & join, filter, project, group, order, slice (Table~\ref{tab-ops}) \\
+$\beta(Q)$, $\beta^+(Q)$ & variables bound by $Q$; with aggregate aliases \\
+$\Gamma_Q$ & typing context of $Q$ \\
+$O \entails Q$ & $Q$ is valid against $O$ \\
+$g=(\vec{a},\kappa,c,m)$; $Q \models g$ & goal; $Q$ satisfies $g$ \\
 $q$; $a$, $o$, $n$ & question; action, observation, solution count \\
 $M$, $\rho$, $B$ & language model, planning policy, step budget \\
 \bottomrule
@@ -61,25 +62,27 @@ running it.
 \begin{table}[t]
   \centering
   \small
-  \setlength{\tabcolsep}{4pt}
-  \caption{SPARQL algebra operators and the \hermes actions that apply them.}
+  \setlength{\tabcolsep}{2.4pt}
+  \caption{SPARQL algebra operators, the relational-algebra symbols we
+    write them with, and the \hermes actions that apply them.}
   \label{tab-ops}
-  \begin{tabular}{@{}lll@{}}
+  \begin{tabular}{@{}llll@{}}
     \toprule
-    Operator & Meaning & Action \\
+    Operator & Symbol & Meaning & Action \\
     \midrule
-    BGP, Join & conjunction of triple patterns & \kw{triple} \\
-    Filter & keep mappings satisfying $e$ & \kw{filter} \\
-    LeftJoin & optional extension & \kw{optional} \\
-    Union & either branch & \kw{union} \\
-    Minus & remove compatible mappings & \kw{minus} \\
-    Extend & bind $?v$ to $e$ & \kw{bind} \\
-    Group, Aggregate & group, then aggregate & \kw{group}, \kw{aggregate} \\
-    Filter on groups & HAVING & \kw{having} \\
-    OrderBy & sort & \kw{order} \\
-    Project, Distinct & restrict, deduplicate & \kw{project}, \kw{distinct} \\
-    Slice & LIMIT, OFFSET & \kw{limit}, \kw{offset} \\
-    ASK form & existence & \kw{ask} \\
+    BGP, Join & $\bowtie$ & join triple patterns & \kw{triple} \\
+    Filter & $\opsel_e$ & keep mappings satisfying $e$ & \kw{filter} \\
+    LeftJoin & $\ljoin$ & optional extension & \kw{optional} \\
+    Union & $\cup$ & either branch & \kw{union} \\
+    Minus & $-$ & drop compatible mappings & \kw{minus} \\
+    Extend & $\opext_{?v \leftarrow e}$ & bind $?v$ to $e$ & \kw{bind} \\
+    Group, Aggregate & $\opgrp_{K;A}$ & group and aggregate & \kw{group}, \kw{aggregate} \\
+    Filter on groups & $\opsel_H$ & HAVING & \kw{having} \\
+    OrderBy & $\opord_R$ & sort & \kw{order} \\
+    Project & $\opproj_\Pi$ & keep variables & \kw{project} \\
+    Distinct & $\opdist$ & deduplicate & \kw{distinct} \\
+    Slice & $\opslice_\ell$ & LIMIT, OFFSET & \kw{limit}, \kw{offset} \\
+    ASK form & $\exists$ & existence & \kw{ask} \\
     \bottomrule
   \end{tabular}
 \end{table}

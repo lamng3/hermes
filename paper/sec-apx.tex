@@ -2,16 +2,16 @@
 
 \stitle{Proposition~\ref{prop-monotone} (Monotone refinement)}.
 \begin{proof}
-Let $\pi$ be a plan with $J = A = \emptyset$ and no slice, and let
-$\mu' \in \eval{\pi'}{\G}$.
-If $\pi'$ adds a triple pattern $t$, then by the semantics of join
-$\mu' = \mu \cup \nu$ for some compatible $\mu \in \eval{\pi}{\G}$ and
-$\nu \in \eval{t}{\G}$; $\mu$ is defined exactly on $\beta(\pi)$, so the
-restriction of $\mu'$ to $\beta(\pi)$ is $\mu$.
-If $\pi'$ adds a filter $e$, then $\eval{\pi'}{\G}$ is the set of
-mappings of $\eval{\pi}{\G}$ that satisfy $e$.
-In both cases the restriction of $\mu'$ to $\beta(\pi)$ is in
-$\eval{\pi}{\G}$.
+Let $Q$ be a plan with $J = A = \emptyset$ and no slice, and let
+$\mu' \in \eval{Q'}{\G}$.
+If $Q'$ adds a triple pattern $t$, then by the semantics of join
+$\mu' = \mu \cup \nu$ for some compatible $\mu \in \eval{Q}{\G}$ and
+$\nu \in \eval{t}{\G}$; $\mu$ is defined exactly on $\beta(Q)$, so the
+restriction of $\mu'$ to $\beta(Q)$ is $\mu$.
+If $Q'$ adds a filter $e$, then $\eval{Q'}{\G}$ is the set of
+mappings of $\eval{Q}{\G}$ that satisfy $e$.
+In both cases the restriction of $\mu'$ to $\beta(Q)$ is in
+$\eval{Q}{\G}$.
 \end{proof}
 
 \stitle{Proposition~\ref{prop-sound} (Static soundness)}.
@@ -34,40 +34,40 @@ verifier.
 \caption{Verified query planning}
 \label{alg-plan}
 \KwIn{question $q$, graph $\G$, ontology $O$, policy $\rho$, step budget $B$}
-\KwOut{a plan $\pi$}
-$\pi \leftarrow \pi_0$; $\sigma \leftarrow \bot$; $h \leftarrow [\,]$\;
+\KwOut{a plan $Q$}
+$Q \leftarrow Q_0$; $g \leftarrow \bot$; $h \leftarrow [\,]$\;
 \For{$i \leftarrow 1$ \KwTo $B$}{
-  $a \leftarrow \rho(q, O, \pi, \sigma, h)$\;
-  \uIf{$a$ is \kw{goal}}{$\sigma \leftarrow a.\sigma$; $o \leftarrow \textsc{Verify}(\pi, \sigma)$\;}
+  $a \leftarrow \rho(q, O, Q, g, h)$\;
+  \uIf{$a$ is \kw{goal}}{$g \leftarrow a.g$; $o \leftarrow \textsc{Verify}(Q, g)$\;}
   \uElseIf{$a$ is \kw{lookup} or \kw{inspect}}{$o \leftarrow$ read $\G$\;}
   \uElseIf{$a$ is \kw{finish}}{
-    \lIf{$\textsc{Verify}(\pi, \sigma)$ has no errors and no open goals}{\Return $\pi$}
+    \lIf{$\textsc{Verify}(Q, g)$ has no errors and no open goals}{\Return $Q$}
     $o \leftarrow$ refusal with the open goals\;}
   \Else{
-    $\pi' \leftarrow a(\pi)$; $o \leftarrow \textsc{Verify}(\pi', \sigma)$\;
+    $Q' \leftarrow a(Q)$; $o \leftarrow \textsc{Verify}(Q', g)$\;
     \If{$o$ has no errors}{
-      $o \leftarrow o \cup \{|\eval{\pi'}{\G}|$, sample$\}$\;
-      \lIf{$\pi'$ runs}{$\pi \leftarrow \pi'$}}}
+      $o \leftarrow o \cup \{|\eval{Q'}{\G}|$, sample$\}$\;
+      \lIf{$Q'$ runs}{$Q \leftarrow Q'$}}}
   append $(a, o)$ to $h$\;
 }
 \Return the last plan in $h$ that runs\;
 \end{algorithm}
 
 \begin{algorithm}[t]
-\caption{\textsc{Verify}$(\pi, \sigma)$}
+\caption{\textsc{Verify}$(Q, g)$}
 \label{alg-verify}
-\KwIn{plan $\pi$, goal $\sigma$ (possibly $\bot$), ontology $O$}
-\KwOut{errors $\mathit{Err}$, typing context $\Gamma_\pi$, open goals $\mathit{Open}$}
-$\mathit{Err} \leftarrow \emptyset$; $\Gamma_\pi \leftarrow \emptyset$\;
+\KwIn{plan $Q$, goal $g$ (possibly $\bot$), ontology $O$}
+\KwOut{errors $\mathit{Err}$, typing context $\Gamma_Q$, open goals $\mathit{Open}$}
+$\mathit{Err} \leftarrow \emptyset$; $\Gamma_Q \leftarrow \emptyset$\;
 \ForEach{triple pattern $(s, p, o)$ of $T$ and $J$}{
   \lIf{$p \notin E$, or a class not in $C$, lies in a namespace $O$ describes}{add to $\mathit{Err}$}
   \lIf{$s$ is a literal, or $o$ is a literal and $\rng(p)$ has a class}{add to $\mathit{Err}$}
-  apply \textsc{T-Type}, \textsc{T-Dom}, and \textsc{T-Rng} to extend $\Gamma_\pi$\;
+  apply \textsc{T-Type}, \textsc{T-Dom}, and \textsc{T-Rng} to extend $\Gamma_Q$\;
 }
-\lForEach{variable with a type in $\Lit$ and a class in $\Gamma_\pi$}{add to $\mathit{Err}$}
-check the conditions of Definition~\ref{def-formed} on $\beta(\pi)$ and $\beta^+(\pi)$, adding violations to $\mathit{Err}$\;
-$\mathit{Open} \leftarrow$ the conditions of $\pi \models \sigma$ (Definition~\ref{def-goal}) that fail\;
-\Return $(\mathit{Err}, \Gamma_\pi, \mathit{Open})$\;
+\lForEach{variable with a type in $\Lit$ and a class in $\Gamma_Q$}{add to $\mathit{Err}$}
+check the conditions of Definition~\ref{def-formed} on $\beta(Q)$ and $\beta^+(Q)$, adding violations to $\mathit{Err}$\;
+$\mathit{Open} \leftarrow$ the conditions of $Q \models g$ (Definition~\ref{def-goal}) that fail\;
+\Return $(\mathit{Err}, \Gamma_Q, \mathit{Open})$\;
 \end{algorithm}
 
 \warn{[Complexity analysis of Algorithms~\ref{alg-plan}

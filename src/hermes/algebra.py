@@ -78,18 +78,23 @@ def render(plan, header=""):
     body = "\n  ".join(where)
     if plan.form == "ASK":
         return f"{header}ASK WHERE {{\n  {body}\n}}"
-    columns = list(plan.projection)
-    if plan.aggregates and not columns:
-        columns = list(plan.group_by)
-    columns += [f"({expr} AS {alias})" for expr, alias in plan.aggregates]
+    aliases = {alias: expr for expr, alias in plan.aggregates}
+    if plan.projection:
+        # Project exactly what was asked; an aggregate alias is computed in place.
+        columns = [f"({aliases[v]} AS {v})" if v in aliases else v for v in plan.projection]
+        hidden = {alias: expr for alias, expr in aliases.items() if alias not in plan.projection}
+    else:
+        columns = list(plan.group_by) + [f"({e} AS {a})" for a, e in aliases.items()]
+        hidden = {}
     select = "SELECT DISTINCT" if plan.distinct else "SELECT"
     lines = [f"{header}{select} {' '.join(columns) or '*'} WHERE {{\n  {body}\n}}"]
     if plan.group_by:
         lines.append("GROUP BY " + " ".join(plan.group_by))
     if plan.having:
-        lines.append("HAVING(" + " && ".join(f"({expr})" for expr in plan.having) + ")")
+        having = " && ".join(f"({_inline(expr, aliases)})" for expr in plan.having)
+        lines.append(f"HAVING({having})")
     if plan.order_by:
-        lines.append("ORDER BY " + " ".join(plan.order_by))
+        lines.append("ORDER BY " + " ".join(_inline(expr, hidden) for expr in plan.order_by))
     if plan.limit is not None:
         lines.append(f"LIMIT {plan.limit}")
     if plan.offset is not None:
@@ -524,6 +529,13 @@ class Explorer:
             if prefix == known and not local.startswith("//"):
                 return namespace + local
         return name
+
+
+def _inline(expr, aliases):
+    """Replace aggregate aliases that are not in scope by their expressions."""
+    for alias, aggregate in aliases.items():
+        expr = re.sub(re.escape(alias) + r"(?![\w])", aggregate, expr)
+    return expr
 
 
 def _statement(pattern):

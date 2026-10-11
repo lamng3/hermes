@@ -7,6 +7,7 @@
 \definecolor{hermesbg}{HTML}{E6EFFA}  % light tint of the Hermes blue
 \definecolor{ours}{HTML}{F3F2EF}      % light gray for our other runs
 \definecolor{mutedink}{HTML}{8A8780}
+\definecolor{hermesblue}{HTML}{2A78D6}
 \newcommand{\zero}{\textcolor{mutedink}{0}}
 \usepackage{xspace}
 \usepackage{balance}
@@ -51,5 +52,19 @@
 \newcommand{\sub}{\sqsubseteq}
 \newcommand{\Lit}{\mathsf{Lit}}
 \newcommand{\entails}{\vdash}
+
+% Relational-algebra operators for SPARQL plans.
+\newcommand{\ljoin}{\mathbin{\setbox0=\hbox{$\bowtie$}%
+  \rule[-.02ex]{.25em}{.4pt}\llap{\rule[\ht0]{.25em}{.4pt}}\mkern-5.8mu\bowtie}}
+\newcommand{\opsel}{\sigma}
+\newcommand{\opext}{\varepsilon}
+\newcommand{\opgrp}{\gamma}
+\newcommand{\opord}{\tau}
+\newcommand{\opproj}{\pi}
+\newcommand{\opdist}{\delta}
+\newcommand{\opslice}{\lambda}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning}
 
 % acmart provides the definition, proposition, lemma and example environments.
