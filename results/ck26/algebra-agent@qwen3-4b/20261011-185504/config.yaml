@@ -1,0 +1,17 @@
+concurrency: 16
+limits:
+  query_seconds: 30
+  item_seconds: 300
+system: algebra-agent
+params:
+  max_steps: 15
+benchmark: ck26
+name: algebra-agent@qwen3-4b
+llm:
+  provider: vllm
+  model: Qwen/Qwen3-4B
+  base_url: https://lamng3-work--hermes-vllm-qwen3-4b-serve.modal.run/v1
+  extra:
+    chat_template_kwargs:
+      enable_thinking: false
+  cache: .cache/llm
