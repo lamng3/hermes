@@ -1,39 +1,69 @@
 \section{Preliminaries}
 \label{sec-pre}
 
-\stitle{RDF graphs and schemas}.
-Let $I$, $B$, and $L$ be disjoint sets of IRIs, blank nodes, and
-literals.
-An RDF graph $\G$ is a finite set of triples
-$(s, p, o) \in (I \cup B) \times I \times (I \cup B \cup L)$.
-A schema $\Sc = (C, P, \dom, \rng, \sub)$ over $\G$ consists of a set
-of classes $C \subseteq I$, a set of properties $P \subseteq I$, the
-domains $\dom(p) \subseteq C$ and ranges
-$\rng(p) \subseteq C \cup D$ of each property, where $D$ is a set of
-datatypes, and the reflexive--transitive closure $\sub$ of
-\kw{rdfs{:}subClassOf}~\cite{rdfs11}.
-A type is a class or a datatype; $\Lit$ denotes the datatypes and
-\kw{rdfs{:}Literal}.
-
-\stitle{The SPARQL algebra}.
-Let $\V$ be a set of variables, disjoint from $I \cup B \cup L$.
-A triple pattern is a triple over $I \cup L \cup \V$.
-Following Pérez et al.~\cite{perez2009semantics} and the SPARQL 1.1
-specification~\cite{sparql11}, a solution mapping $\mu$ is a partial
-function from $\V$ to $I \cup B \cup L$, two mappings are compatible
-when they agree on their shared variables, and a graph pattern $P$
-evaluates on $\G$ to a multiset of mappings $\eval{P}{\G}$.
-Patterns are built from basic graph patterns (BGPs) by the operators
-in Table~\ref{tab-ops}.
-Evaluating SPARQL graph patterns is PSPACE-complete in
-general~\cite{perez2009semantics}, so executing a plan to inspect it is
-not free; this motivates checking what can be checked without
-execution.
+Table~\ref{tab-notation} summarizes the notation used throughout the
+paper.
 
 \begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\caption{Key notation.}
+\label{tab-notation}
+\begin{tabular}{@{}lp{5.4cm}@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$\G$; $\eval{P}{\G}$ & RDF graph; answers of pattern $P$ on $\G$ \\
+$I$, $L$, $V$ & IRIs, literals, variables ($?x$) \\
+$O=(C,E)$ & ontology: classes $C$, properties $E$ \\
+$\dom$, $\rng$; $\sub$ & domain and range of a property; subclass order \\
+$D$; $\Lit$ & datatypes; literal types ($D$ and \kw{rdfs{:}Literal}) \\
+$\pi$ & plan $(T, F, J, X, K, A, H, R, \Pi, \delta, \ell, f)$ (Definition~\ref{def-plan}) \\
+$\beta(\pi)$, $\beta^+(\pi)$ & variables bound by $\pi$; with aggregate aliases \\
+$\Gamma_\pi$ & typing context of $\pi$ \\
+$O \entails \pi$ & $\pi$ is valid against $O$ \\
+$\sigma=(\vec{a},\kappa,c,m)$; $\pi \models \sigma$ & goal; $\pi$ satisfies $\sigma$ \\
+$q$; $a$, $o$, $n$ & question; action, observation, solution count \\
+$M$, $\rho$, $B$ & language model, planning policy, step budget \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\stitle{RDF graphs and ontologies}.
+Let $I$ and $L$ be disjoint sets of IRIs and literals; blank nodes are
+treated as IRIs.
+An RDF graph $\G$ is a finite set of triples
+$(s, p, o) \in I \times I \times (I \cup L)$.
+An ontology $O = (C, E)$ over $\G$, its schema, has classes $C \subseteq I$ and
+properties $E \subseteq I$, a domain $\dom(p) \subseteq C$ and a range
+$\rng(p) \subseteq C \cup D$ for each property $p \in E$, where $D$ is a
+set of datatypes, and the reflexive--transitive closure $\sub$ of
+\kw{rdfs{:}subClassOf}~\cite{rdfs11}.
+A \emph{type} is a class or a datatype; $\Lit$ denotes the datatypes
+and \kw{rdfs{:}Literal}.
+
+\stitle{The SPARQL algebra}.
+Let $V$ be a set of variables, disjoint from $I \cup L$.
+A triple pattern is a triple over $I \cup L \cup V$.
+Following Pérez et al.~\cite{perez2009semantics} and the SPARQL 1.1
+specification~\cite{sparql11}, a solution mapping $\mu$ is a partial
+function from $V$ to $I \cup L$, two mappings are compatible when they
+agree on their shared variables, and a graph pattern $P$ evaluates on
+$\G$ to a multiset of mappings $\eval{P}{\G}$.
+Patterns are built from basic graph patterns (BGPs) by the operators in
+Table~\ref{tab-ops}.
+Evaluating SPARQL graph patterns is PSPACE-complete in
+general~\cite{perez2009semantics}, so running a plan to inspect it is
+not free, which motivates checking what can be checked without
+running it.
+
+\begin{table}[t]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}
   \caption{SPARQL algebra operators and the \hermes actions that apply them.}
   \label{tab-ops}
-  \small
   \begin{tabular}{@{}lll@{}}
     \toprule
     Operator & Meaning & Action \\
@@ -55,9 +85,9 @@ execution.
 \end{table}
 
 \stitle{Natural language to SPARQL}.
-Given a question $q$, a graph $\G$, and its schema $\Sc$, the task is to
-produce a query $Q$ whose answers $\eval{Q}{\G}$ match the intended
-answers of $q$.
+Given a question $q$, a graph $\G$, and its ontology $O$, the task is to
+produce a query whose answers on $\G$ match the intended answers of
+$q$.
 Following the Text2SPARQL evaluation~\cite{text2sparql}, answers are
 compared as sets of values: every value bound to every projected
 variable counts once, and quality is measured by set precision, recall,

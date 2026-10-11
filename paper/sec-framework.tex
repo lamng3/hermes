@@ -42,15 +42,15 @@ property, suggest the closest term in the schema.
 Algorithm~\ref{alg-verify} in Appendix~B gives the procedure.
 
 \stitle{Planner}.
-The planner is an LLM prompted, at every turn, with the action
-catalogue, the schema vocabulary, the entities whose labels occur in
+The policy $\rho$ is a language model $M$ prompted, at every turn, with
+the action catalogue, the vocabulary of $O$, the entities whose labels occur in
 the question, the history of actions and observations, and the current
 plan as SPARQL.
 With the verifier enabled, the prompt also shows the typing context and
 the open goals, and \kw{finish} is refused while an error or an open
 goal remains.
 An action identical to the previous one is not executed.
-The loop ends on \kw{finish} or after a step budget (15), and returns
+The loop ends on \kw{finish} or after the step budget $B$ (15), and returns
 the last committed plan that runs.
 
 \stitle{Other policies in the same space}.
