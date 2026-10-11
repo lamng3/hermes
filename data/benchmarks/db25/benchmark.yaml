@@ -1,0 +1,17 @@
+name: db25
+title: Text2SPARQL'25 DBpedia (DB25)
+graph: dbpedia-t2s
+languages:
+- en
+- es
+license: CC BY-SA 4.0 (Text2SPARQL challenge, AKSW)
+source:
+  questions:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql-client-examples/c6666be31796d6b8555031198a6d54df166d4406/examples_db25/questions_db25.yml
+    sha256: 0823af057c8c2f7dc725aaeaf4811dcb99e178ba0591f6f273a6a5f11f4aa739
+  gold:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql-client-examples/c6666be31796d6b8555031198a6d54df166d4406/examples_db25/db25_true_result_set.json
+    sha256: eb544e2bda216f89fe7ea2a118ea5cb19bcd2034a750758ccbeaf37cde045e64
+retrieved: '2026-10-11'
+items: 200
+dataset_id: https://text2sparql.aksw.org/2025/dbpedia/

@@ -1,0 +1,14 @@
+name: qald9plus
+title: QALD-9-plus test (DBpedia)
+graph: dbpedia
+languages:
+- en
+- de
+- ru
+license: CC BY 4.0 (KGQA/QALD_9_plus)
+source:
+  questions:
+    url: https://raw.githubusercontent.com/KGQA/QALD_9_plus/b9fb0380902e6935efc9505170bc3652e8c242c1/data/qald_9_plus_test_dbpedia.json
+    sha256: 7831fd113d9c5ad66c429bfb39b079fdb101578e57c095777a468f206201787f
+retrieved: '2026-10-11'
+items: 450

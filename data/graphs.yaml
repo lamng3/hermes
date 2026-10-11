@@ -1,0 +1,41 @@
+# Knowledge graphs that benchmarks run on. Paths are relative to data/.
+# A graph is either local RDF files (`files`, loaded with rdflib) or a SPARQL
+# endpoint (`endpoint`). `schema` optionally names smaller files to read the
+# vocabulary from; `vocabulary_limit` caps the classes and properties shown
+# to systems (0 skips vocabulary queries, for very large graphs).
+
+corporate:
+  # Text2SPARQL corporate KG: 13 classes, 30 properties, about 26.6k triples.
+  # engine: oxigraph (default) or rdflib.
+  files: [graphs/corporate/prod-vocab.ttl, graphs/corporate/prod-inst.ttl]
+  schema: [graphs/corporate/prod-vocab.ttl]
+
+dbpedia-t2s:
+  # The Text2SPARQL'26 DBpedia snapshot (Tentris), hosted by the organizers.
+  endpoint: http://141.57.8.18:9081/sparql
+  vocabulary_limit: 0
+  prefixes:
+    dbo: http://dbpedia.org/ontology/
+    dbr: http://dbpedia.org/resource/
+    dbp: http://dbpedia.org/property/
+
+dbpedia:
+  # Live DBpedia. QALD-9-plus was built on DBpedia 2016-10, so answers drift.
+  endpoint: https://dbpedia.org/sparql
+  vocabulary_limit: 0
+  prefixes:
+    dbo: http://dbpedia.org/ontology/
+    dbr: http://dbpedia.org/resource/
+    dbp: http://dbpedia.org/property/
+
+wikidata:
+  # Live Wikidata Query Service. QALD-10 answers were collected in 2022.
+  endpoint: https://query.wikidata.org/sparql
+  vocabulary_limit: 0
+  prefixes:
+    wd: http://www.wikidata.org/entity/
+    wdt: http://www.wikidata.org/prop/direct/
+    p: http://www.wikidata.org/prop/
+    ps: http://www.wikidata.org/prop/statement/
+    pq: http://www.wikidata.org/prop/qualifier/
+    wikibase: http://wikiba.se/ontology#

@@ -1,0 +1,7 @@
+# Baseline: one prompted draft from the vocabulary, one repair on parse errors.
+benchmark: db26
+system: training-free
+llm:
+  provider: ollama
+  model: llama3.1
+  cache: .cache/llm

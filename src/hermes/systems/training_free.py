@@ -1,46 +1,43 @@
-"""Generate one SPARQL query from a question, an ontology, and optional context."""
+"""The training-free system: one draft from the vocabulary, then fixed stages.
 
-from dataclasses import dataclass, field
+The draft is prompted from the ontology vocabulary and optional context, passed
+through the stages in hermes.stages, parse-checked, and repaired once.
+"""
 
-from hermes.llm import complete
-from hermes.ontology import load_vocabulary
+from hermes import llm as llms
+from hermes.context import as_context
+from hermes.knowledge import as_knowledge_graph
 from hermes.stages import apply_stages
+from hermes.systems import register
 from hermes.validate import parse_error, prepare_draft, repair_prompt
 
 
-@dataclass
-class Example:
-    nl: str
-    sparql: str
+@register("training-free")
+class TrainingFree:
+    def __init__(self, llm=None):
+        self.llm = llm
 
-
-@dataclass
-class Context:
-    text: str = ""
-    examples: list[Example] = field(default_factory=list)
-
-
-def generate(question, ontology, context=None):
-    question = (question or "").strip()
-    if not question:
-        raise ValueError("A question is required.")
-    context = _context(context)
-    vocabulary = load_vocabulary(ontology)
-    prompt = build_prompt(question, vocabulary, context)
-    content, model, provider = complete(prompt)
-    sparql = apply_stages(prepare_draft(content), vocabulary, context)
-    error = parse_error(sparql)
-    if error:
-        content, model, provider = complete(repair_prompt(sparql, error))
+    def __call__(self, question, kg, context=None):
+        question = (question or "").strip()
+        if not question:
+            raise ValueError("A question is required.")
+        llm = self.llm or llms.from_env()
+        context = as_context(context)
+        vocabulary = as_knowledge_graph(kg).vocabulary
+        content = llm.complete(build_prompt(question, vocabulary, context))
         sparql = apply_stages(prepare_draft(content), vocabulary, context)
         error = parse_error(sparql)
         if error:
-            raise ValueError(f"The model returned SPARQL that does not parse: {error}")
-    return {"sparql": sparql, "model": model, "provider": provider}
+            content = llm.complete(repair_prompt(sparql, error))
+            sparql = apply_stages(prepare_draft(content), vocabulary, context)
+            error = parse_error(sparql)
+            if error:
+                raise ValueError(f"The model returned SPARQL that does not parse: {error}")
+        return {"sparql": sparql, "model": llm.model, "provider": llm.provider}
 
 
 def build_prompt(question, vocabulary, context=None):
-    context = _context(context)
+    context = as_context(context)
     classes = "\n".join(f"- {item}" for item in vocabulary["classes"]) or "- (none found)"
     properties = (
         "\n".join(f"- {item}" for item in vocabulary["properties"]) or "- (none found)"
@@ -90,10 +87,3 @@ def build_prompt(question, vocabulary, context=None):
     sections.append(f"Question: {question.strip()}")
     return "\n\n".join(sections)
 
-
-def _context(context):
-    if context is None:
-        return Context()
-    if isinstance(context, Context):
-        return context
-    raise TypeError("context must be a Context or None.")

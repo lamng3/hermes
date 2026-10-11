@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from hermes.generate import Context, Example, build_prompt
+from hermes.context import Context, Example
 from hermes.ontology import load_vocabulary
+from hermes.systems.training_free import TrainingFree, build_prompt
 from hermes.stages import apply_stages
 from hermes.validate import lift_modifiers, parse_error
 
@@ -63,9 +64,20 @@ def test_prompt_includes_context_and_examples():
     assert prompt.endswith("Question: Which cities are listed?")
 
 
-def test_research_stages_leave_the_draft_unchanged():
+def test_stages_leave_a_complete_draft_unchanged():
     draft = "SELECT ?city WHERE { ?city a ex:City }"
     assert apply_stages(draft, {"classes": []}, Context()) == draft
+
+
+def test_training_free_uses_the_injected_llm():
+    from conftest import ScriptedLLM
+
+    reply = "```sparql\nPREFIX ex: <http://example.org/demo#>\nSELECT ?c WHERE { ?c a ex:City }\n```"
+    llm = ScriptedLLM([reply])
+    result = TrainingFree(llm=llm)("Which cities?", FIXTURES / "city.ttl")
+    assert result["sparql"].endswith("SELECT ?c WHERE { ?c a ex:City }")
+    assert result["model"] == "scripted"
+    assert "ex:City" in llm.prompts[0]
 
 
 def test_registered_system_runs_through_ask():
@@ -77,3 +89,12 @@ def test_registered_system_runs_through_ask():
 
     assert "echo-test" in hermes.systems.available()
     assert hermes.ask("hi", "x.ttl", system="echo-test") == {"sparql": "# hi"}
+
+
+def test_guardrails_declare_known_prefixes_the_draft_forgot():
+    vocabulary = {"prefixes": [("pv", "http://ld.company.org/prod-vocab/")]}
+    draft = 'SELECT ?d WHERE { ?e pv:memberOf ?d ; rdfs:label "a:b" . ?d a <http://x.org/y:z> }'
+    fixed = apply_stages(draft, vocabulary, Context())
+    assert fixed.startswith("PREFIX pv: <http://ld.company.org/prod-vocab/>\nPREFIX rdfs:")
+    assert parse_error(fixed) is None
+    assert apply_stages(fixed, vocabulary, Context()) == fixed

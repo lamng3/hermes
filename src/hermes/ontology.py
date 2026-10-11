@@ -1,50 +1,57 @@
-"""Load a Turtle ontology into a compact vocabulary for prompting."""
+"""Read a compact vocabulary (classes, properties, prefixes) for prompting.
+
+The vocabulary is queried through a graph store, so it works the same for a
+local Turtle file and for a remote endpoint.
+"""
 
 import re
 from pathlib import Path
-
-from rdflib import Graph
-from rdflib.namespace import OWL, RDF, RDFS
 
 _DECLARED_PREFIX = re.compile(
     r"@?prefix\s+([A-Za-z][\w.-]*)\s*:\s*<([^>]+)>",
     re.IGNORECASE,
 )
+_CLASSES = """
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?term ?label WHERE {
+  { ?term a owl:Class } UNION { ?term a rdfs:Class }
+  OPTIONAL { ?term rdfs:label ?label }
+  FILTER(isIRI(?term))
+}
+"""
+_PROPERTIES = """
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?term ?label WHERE {
+  { ?term a owl:ObjectProperty } UNION
+  { ?term a owl:DatatypeProperty } UNION
+  { ?term a rdf:Property }
+  OPTIONAL { ?term rdfs:label ?label }
+  FILTER(isIRI(?term))
+}
+"""
 
 
 def load_vocabulary(ontology_path, limit=60):
-    path = Path(ontology_path)
-    graph = Graph()
-    graph.parse(path, format="turtle")
-    classes = _labelled(
-        graph,
-        """
-        SELECT ?term ?label WHERE {
-          { ?term a owl:Class } UNION { ?term a rdfs:Class }
-          OPTIONAL { ?term rdfs:label ?label }
-          FILTER(isIRI(?term))
-        }
-        """,
-        limit,
-    )
-    properties = _labelled(
-        graph,
-        """
-        SELECT ?term ?label WHERE {
-          { ?term a owl:ObjectProperty } UNION
-          { ?term a owl:DatatypeProperty } UNION
-          { ?term a rdf:Property }
-          OPTIONAL { ?term rdfs:label ?label }
-          FILTER(isIRI(?term))
-        }
-        """,
-        limit,
-    )
-    declared = _declared_prefixes(path)
+    """Vocabulary of one RDF file."""
+    from hermes.store import local_store
+
+    return vocabulary(local_store(ontology_path), declared_prefixes(ontology_path), limit)
+
+
+def vocabulary(store, declared=(), limit=60):
+    classes = _labelled(store, _CLASSES, limit) if limit else []
+    properties = _labelled(store, _PROPERTIES, limit) if limit else []
+    declared = [
+        (prefix, namespace)
+        for prefix, namespace in declared
+        if not _is_core_namespace(namespace)
+    ][:12]
     iris = [term for term, _label in classes + properties]
     prefixes, by_namespace = _prefixes_for_terms(iris, declared)
     return {
-        "path": str(path),
         "classes": [_term_line(term, label, by_namespace) for term, label in classes],
         "properties": [
             _term_line(term, label, by_namespace) for term, label in properties
@@ -53,18 +60,18 @@ def load_vocabulary(ontology_path, limit=60):
     }
 
 
-def _declared_prefixes(ontology_path):
-    text = Path(ontology_path).read_text(encoding="utf-8", errors="replace")
+def declared_prefixes(*paths):
+    """Prefixes as written in the files, in order, without duplicates."""
     found = []
     seen = set()
-    for prefix, namespace in _DECLARED_PREFIX.findall(text):
-        key = prefix.lower()
-        if key in seen or _is_core_namespace(namespace):
-            continue
-        seen.add(key)
-        found.append((prefix, namespace))
-        if len(found) >= 12:
-            break
+    for path in paths:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+        for prefix, namespace in _DECLARED_PREFIX.findall(text):
+            key = prefix.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append((prefix, namespace))
     return found
 
 
@@ -127,15 +134,16 @@ def _term_line(term, label, by_namespace):
     return name
 
 
-def _labelled(graph, query, limit):
+def _labelled(store, query, limit):
     rows = []
     seen = set()
-    for term, label in graph.query(query, initNs={"owl": OWL, "rdfs": RDFS, "rdf": RDF}):
-        iri = str(term)
+    result = store.try_query(query)
+    for binding in result.get("results", {}).get("bindings", []):
+        iri = binding["term"]["value"]
         if iri in seen:
             continue
         seen.add(iri)
-        rows.append((iri, str(label) if label else ""))
+        rows.append((iri, binding.get("label", {}).get("value", "")))
         if len(rows) >= limit:
             break
     return rows
