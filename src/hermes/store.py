@@ -158,15 +158,18 @@ class CachedStore(GraphStore):
         self.store = store
         self.local = store.local
         self.executions = 0
+        self.seconds = 0.0
         self._cache = {}
 
     def query(self, sparql):
         if sparql not in self._cache:
             self.executions += 1
+            started = time.perf_counter()
             try:
                 self._cache[sparql] = self.store.query(sparql)
             except QueryError as exc:
                 self._cache[sparql] = exc
+            self.seconds += time.perf_counter() - started
         cached = self._cache[sparql]
         if isinstance(cached, QueryError):
             raise cached

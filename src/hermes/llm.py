@@ -22,13 +22,30 @@ SYSTEM = (
 
 
 class LLM:
-    """Interface: complete(prompt, system) -> text."""
+    """Interface: complete(prompt, system) -> text.
+
+    Clients also count what they spend in `usage`: calls, input and output
+    tokens, and seconds of model time.
+    """
 
     provider = ""
     model = ""
 
     def complete(self, prompt, system=SYSTEM):
         raise NotImplementedError
+
+    @property
+    def usage(self):
+        if "_usage" not in self.__dict__:
+            self._usage = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "seconds": 0.0}
+        return self._usage
+
+    def record(self, input_tokens, output_tokens, seconds):
+        usage = self.usage
+        usage["calls"] += 1
+        usage["input_tokens"] += int(input_tokens or 0)
+        usage["output_tokens"] += int(output_tokens or 0)
+        usage["seconds"] += float(seconds or 0.0)
 
 
 class Ollama(LLM):
@@ -81,7 +98,10 @@ class Ollama(LLM):
                 f"Ollama model {model} is not installed. Run `ollama pull {model}`."
             )
         response.raise_for_status()
-        return response.json()["message"]["content"]
+        data = response.json()
+        self.record(data.get("prompt_eval_count"), data.get("eval_count"),
+                    (data.get("total_duration") or 0) / 1e9)
+        return data["message"]["content"]
 
     def _installed_model(self):
         response = httpx.get(f"{self.base_url}/api/tags", timeout=5.0)
@@ -121,6 +141,7 @@ class OpenAICompatible(LLM):
             raise LookupError(
                 "Set HERMES_LLM_API_KEY, or leave HERMES_LLM_PROVIDER unset to use Ollama."
             )
+        started = time.time()
         response = _with_retries(
             lambda: httpx.post(
                 f"{self.base_url}/chat/completions",
@@ -137,7 +158,11 @@ class OpenAICompatible(LLM):
             )
         )
         response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
+        data = response.json()
+        usage = data.get("usage") or {}
+        self.record(usage.get("prompt_tokens"), usage.get("completion_tokens"),
+                    time.time() - started)
+        return data["choices"][0]["message"]["content"]
 
 
 class CachedLLM(LLM):
@@ -166,11 +191,14 @@ class CachedLLM(LLM):
         if path.exists():
             self.hits += 1
             return json.loads(path.read_text(encoding="utf-8"))["completion"]
+        before = dict(self.llm.usage)
         completion = self.llm.complete(prompt, system)
+        spent = {k: self.llm.usage[k] - before[k] for k in before}
+        self.record(spent["input_tokens"], spent["output_tokens"], spent["seconds"])
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps({"model": self.model, "system": system, "prompt": prompt,
-                        "completion": completion}),
+                        "completion": completion, "usage": spent}),
             encoding="utf-8",
         )
         return completion

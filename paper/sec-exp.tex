@@ -97,9 +97,23 @@ a rerun with the corrected prompt is in progress; until it finishes,
 every \hermes{}$^-$ number in this section is provisional.}
 The OneShot and CGS prompts use generic or unrelated examples.
 
+\stitle{Model}.
+Every experiment in this paper uses one small open model: Llama~3.1
+8B~\cite{grattafiori2024llama3} with 4-bit quantization (Q4\_0), served
+locally by Ollama~\cite{ollama} at temperature 0.
+We chose it so that every result can be reproduced on a laptop, with no
+API cost, and so that differences between methods are not masked by a
+model that can answer from memory.
+The published Text2SPARQL entries use larger models, so our numbers are
+a lower bound for each method, not its ceiling.
+\hermes takes the model as a parameter, local or behind any
+OpenAI-compatible API, so the same runs extend to other open models
+such as Qwen2.5 and Qwen3~\cite{qwen2024qwen25,yang2025qwen3} and to API
+models such as GPT-4~\cite{openai2023gpt4}.
+\warn{[Pending: results with further small and API models.]}
+
 \stitle{Implementation}.
-All methods use the same model, Llama~3.1 8B served locally by Ollama
-at temperature 0, the same graph stores, and the same scorer.
+All methods use this model, the same graph stores, and the same scorer.
 The planners have a step budget of $B = 15$.
 Experiments run on a single Apple-silicon laptop.
 
@@ -123,8 +137,8 @@ model, OneShot reaches 0.017, as on CK26.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig/outcomes.pdf}
-  \caption{Outcome of each CK26 item: no runnable query, a query with
-    $F_1 = 0$, a partial answer, or the exact answer.}
+  \caption{Outcome of each CK26 item (Llama~3.1 8B): no runnable query,
+    a query with $F_1 = 0$, a partial answer, or the exact answer.}
   \label{fig-outcomes}
 \end{figure}
 
@@ -229,43 +243,70 @@ kernel rejections per item; effect of goal-gated \kw{finish}.]}
 \warn{[Pending: ablation of the observation, removing in turn the
 count, the change in count, the row sample, and the error message.]}
 
-\subsection{RQ3: Cost}
+\subsection{RQ3: Time and Cost}
 
-Table~\ref{tab-cost} reports the cost of each run, and
-Figure~\ref{fig-cost} sets accuracy against model calls.
+All runs execute on one laptop (Apple M2 Pro, 16\,GB) with the model
+served locally, so no run pays for API calls; cost is model calls,
+graph executions, and time.
+Table~\ref{tab-cost} reports them per run, and Figure~\ref{fig-cost}
+sets accuracy against model calls.
+
+\stitle{Model calls}.
 \hermes{}$^-$ ends with a runnable query on 96 of 100 items, against 59
 for CGS and 76 for OneShot, but it spends 1,451 model calls (14.5 per
 item, 13.9 steps on average) against 198 for CGS and 116 for OneShot.
 The comparison in Table~\ref{tab-main} is therefore not at equal model
 budget, and does not by itself show that execution feedback beats
 generation with repair.
-Graph executions are cheaper: memoization keeps \hermes{}$^-$ at 422
-executions, below the 667 of CGS's beam search.
 \warn{[Pending: budget-matched comparison, \eg CGS or OneShot with
 self-consistency at 15 calls per item.]}
+
+\stitle{Time}.
+OneShot answers 100 items in 6.2 minutes (3.0\,s median per item).
+CGS takes 35.6 minutes (15.1\,s median, 58.1\,s at the 95th
+percentile): its beam search runs 667 graph executions, and its slowest
+items are those with large constraint tables.
+\hermes{}$^-$ takes 40.4 minutes (24.4\,s median, 34.6\,s at the 95th
+percentile), and its time is the most predictable of the three because
+every item is bounded by the 15-step budget.
+Graph executions stay cheap for the planner: memoization keeps it at
+422, below the 667 of CGS.
+The gold-oracle ablation shows the risk of search without a time
+bound: with every model call replayed from the cache, the median item
+takes under a second, yet the run takes 37.2 minutes, because one item
+spends 1,919\,s (86\% of the run) on 81 graph executions, among them a
+single very expensive candidate query.
+The local store has no query timeout; bounding each execution is a
+simple guard that both search and planning need.
+\warn{[Pending: input and output tokens and the split of time between
+the model and the graph store, which runs record from the corrected
+rerun onward.]}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{fig/cost.pdf}
-  \caption{Set $F_1$ against model calls per item on CK26. Hollow
+  \caption{Set $F_1$ against model calls per item on CK26 (Llama~3.1 8B). Hollow
     markers are ablations: CGS with gold reference answers, and \hermes
     without the verifier.}
   \label{fig-cost}
 \end{figure}
 
 \begin{table}[t]
-  \caption{Cost per run on CK26 (100 items). Errors are items with no
-    query or a query that fails to run.}
+  \caption{Time and cost per run on CK26 (100 items, Llama~3.1 8B on
+    one laptop). Wall is the whole run; p50 and p95 are seconds per
+    item. Errors are items with no query or a query that fails to run.}
   \label{tab-cost}
   \small
-  \begin{tabular}{@{}lrrrr@{}}
+  \setlength{\tabcolsep}{3.5pt}
+  \begin{tabular}{@{}lrrrrrr@{}}
     \toprule
-    Method & Model calls & Executions & p50 (s) & Errors \\
+    Method & Calls & Exec. & Wall (min) & p50 & p95 & Errors \\
     \midrule
-    OneShot & 116 & 136 & 3.0 & 24 \\
-    CGS & 198 & 667 & 15.1 & 41 \\
-    \rowcolor{hermesbg}\hermes{}$^-$ & 1,451 & 422 & 24.4 & \textbf{4} \\
-    \rowcolor{hermesbg}\hermes & \warn{--} & \warn{--} & \warn{--} & \warn{--} \\
+    OneShot & 116 & 136 & \textbf{6.2} & \textbf{3.0} & \textbf{8.5} & 24 \\
+    CGS & 198 & 667 & 35.6 & 15.1 & 58.1 & 41 \\
+    \quad gold oracle & (cached) & 4,051 & 37.2 & 0.0 & 0.8 & 41 \\
+    \rowcolor{hermesbg}\hermes{}$^-$ & 1,451 & 422 & 40.4 & 24.4 & 34.6 & \textbf{4} \\
+    \rowcolor{hermesbg}\hermes & \warn{--} & \warn{--} & \warn{--} & \warn{--} & \warn{--} & \warn{--} \\
     \bottomrule
   \end{tabular}
 \end{table}
