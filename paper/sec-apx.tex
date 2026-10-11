@@ -2,15 +2,15 @@
 
 \stitle{Proposition~\ref{prop-monotone} (Monotone refinement)}.
 \begin{proof}
-Let $\pi$ be a plan whose pattern is a conjunction of triple patterns
-and filters, and let $\mu' \in \eval{\pi'}{\G}$.
+Let $\pi$ be a plan with $J = A = \emptyset$ and no slice, and let
+$\mu' \in \eval{\pi'}{\G}$.
 If $\pi'$ adds a triple pattern $t$, then by the semantics of join
-$\mu' = \mu \cup \nu$ for some $\mu \in \eval{\pi}{\G}$ and
-$\nu \in \eval{t}{\G}$ that are compatible, so the restriction of
-$\mu'$ to $S_\pi = \dom(\mu)$ is $\mu$.
-If $\pi'$ adds a filter $e$, then
-$\eval{\pi'}{\G} = \{\mu \in \eval{\pi}{\G} \mid \mu \models e\}$.
-In both cases the restriction of $\mu'$ to $S_\pi$ is in
+$\mu' = \mu \cup \nu$ for some compatible $\mu \in \eval{\pi}{\G}$ and
+$\nu \in \eval{t}{\G}$; $\mu$ is defined exactly on $\beta(\pi)$, so the
+restriction of $\mu'$ to $\beta(\pi)$ is $\mu$.
+If $\pi'$ adds a filter $e$, then $\eval{\pi'}{\G}$ is the set of
+mappings of $\eval{\pi}{\G}$ that satisfy $e$.
+In both cases the restriction of $\mu'$ to $\beta(\pi)$ is in
 $\eval{\pi}{\G}$.
 \end{proof}
 
@@ -33,11 +33,11 @@ verifier.
 \begin{algorithm}[t]
 \caption{Verified query planning}
 \label{alg-plan}
-\KwIn{question $q$, graph $\G$, schema $\Sc$, policy $\rho$, step budget $k$}
+\KwIn{question $q$, graph $\G$, ontology $O$, policy $\rho$, step budget $B$}
 \KwOut{a plan $\pi$}
 $\pi \leftarrow \pi_0$; $\sigma \leftarrow \bot$; $h \leftarrow [\,]$\;
-\For{$i \leftarrow 1$ \KwTo $k$}{
-  $a \leftarrow \rho(q, \Sc, \pi, \sigma, h)$\;
+\For{$i \leftarrow 1$ \KwTo $B$}{
+  $a \leftarrow \rho(q, O, \pi, \sigma, h)$\;
   \uIf{$a$ is \kw{goal}}{$\sigma \leftarrow a.\sigma$; $o \leftarrow \textsc{Verify}(\pi, \sigma)$\;}
   \uElseIf{$a$ is \kw{lookup} or \kw{inspect}}{$o \leftarrow$ read $\G$\;}
   \uElseIf{$a$ is \kw{finish}}{
@@ -56,18 +56,18 @@ $\pi \leftarrow \pi_0$; $\sigma \leftarrow \bot$; $h \leftarrow [\,]$\;
 \begin{algorithm}[t]
 \caption{\textsc{Verify}$(\pi, \sigma)$}
 \label{alg-verify}
-\KwIn{plan $\pi$, goal $\sigma$ (possibly $\bot$), schema $\Sc$}
-\KwOut{errors $E$, context $\Gamma$, open goals $G$}
-$E \leftarrow \emptyset$; $\Gamma \leftarrow \emptyset$\;
-\ForEach{triple pattern $(s, p, o)$ of $\pi$}{
-  \lIf{$p$ or a class in a described namespace is unknown}{add to $E$}
-  \lIf{$s$ is a literal, or $o$ is a literal and $\rng(p)$ has a class}{add to $E$}
-  add $\dom(p)$ to $\Gamma(s)$, $\rng(p)$ to $\Gamma(o)$, and $c$ to $\Gamma(s)$ for $(s, \kw{rdf{:}type}, c)$\;
+\KwIn{plan $\pi$, goal $\sigma$ (possibly $\bot$), ontology $O$}
+\KwOut{errors $\mathit{Err}$, typing context $\Gamma_\pi$, open goals $\mathit{Open}$}
+$\mathit{Err} \leftarrow \emptyset$; $\Gamma_\pi \leftarrow \emptyset$\;
+\ForEach{triple pattern $(s, p, o)$ of $T$ and $J$}{
+  \lIf{$p \notin E$, or a class not in $C$, lies in a namespace $O$ describes}{add to $\mathit{Err}$}
+  \lIf{$s$ is a literal, or $o$ is a literal and $\rng(p)$ has a class}{add to $\mathit{Err}$}
+  apply \textsc{T-Type}, \textsc{T-Dom}, and \textsc{T-Rng} to extend $\Gamma_\pi$\;
 }
-\lForEach{variable with both a class and a datatype in $\Gamma$}{add to $E$}
-check the scope and grouping conditions of the well-formed definition, adding violations to $E$\;
-$G \leftarrow$ the conditions of $\pi \models \sigma$ that fail\;
-\Return $(E, \Gamma, G)$\;
+\lForEach{variable with a type in $\Lit$ and a class in $\Gamma_\pi$}{add to $\mathit{Err}$}
+check the conditions of Definition~\ref{def-formed} on $\beta(\pi)$ and $\beta^+(\pi)$, adding violations to $\mathit{Err}$\;
+$\mathit{Open} \leftarrow$ the conditions of $\pi \models \sigma$ (Definition~\ref{def-goal}) that fail\;
+\Return $(\mathit{Err}, \Gamma_\pi, \mathit{Open})$\;
 \end{algorithm}
 
 \warn{[Complexity analysis of Algorithms~\ref{alg-plan}

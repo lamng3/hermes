@@ -4,43 +4,47 @@
 This section formalizes query plans as typed terms of the SPARQL
 algebra and states the planning problem that \hermes solves.
 
-\subsection{Plans}
+\stitle{Plans}.
+A plan is the logical form of a query, built one operator at a time.
 
 \begin{definition}[Plan]
-A plan $\pi$ consists of
+\label{def-plan}
+A plan is a tuple $\pi = (T, F, J, X, K, A,$ $H, R, \Pi, \delta, \ell, f)$:
 a set $T$ of triple patterns;
 a set $F$ of filter expressions;
-optional groups $O$, union branches $U$, and minus groups $M$, each a
-set of triple patterns;
+a set $J$ of groups $(\omega, T')$ that combine a set $T'$ of triple
+patterns with the plan by
+$\omega \in \{\kw{optional}, \kw{union}, \kw{minus}\}$;
 extensions $X$, pairs $(e, ?v)$ of an expression and a variable;
-group-by variables $\Gamma_{\!g}$;
-aggregates $A$, pairs $(\alpha, ?v)$;
+group keys $K \subseteq V$;
+aggregates $A$, pairs $(\varphi, ?v)$ of an aggregate expression and a
+variable;
 group filters $H$;
 order keys $R$;
-projected variables $\Pi$;
+projected variables $\Pi \subseteq V$;
 a distinct flag $\delta$;
 a slice $\ell$;
-and a query form $f \in \{\kw{SELECT}, \kw{ASK}\}$.
+and a form $f \in \{\kw{SELECT}, \kw{ASK}\}$.
 \end{definition}
 
-A plan denotes the SPARQL query obtained by joining $T$, applying the
-optional, union, minus, extension, and filter operators in that order,
-then grouping, aggregating, filtering groups, ordering, projecting, and
-slicing.
-Rendering is deterministic, so a plan and its query are interchangeable.
-An \emph{action} is a total function from plans to plans that applies
-one operator of Table~\ref{tab-ops}; the action \kw{remove} retracts a
-triple pattern or a filter.
+A plan denotes the query that joins $T$; applies the groups $J$, the
+extensions $X$, and the filters $F$; then groups by $K$, aggregates $A$,
+filters groups by $H$, orders by $R$, projects $\Pi$, and slices by
+$\ell$.
+Rendering is deterministic, so a plan and its query are interchangeable,
+and we write $\eval{\pi}{\G}$ for its answers.
+An \emph{action} $a$ is a total function from plans to plans that
+applies one operator of Table~\ref{tab-ops}; the action \kw{remove}
+retracts a triple pattern or a filter.
 Plans are immutable, so a sequence of actions is a path
 $\pi_0 \to \pi_1 \to \cdots \to \pi_k$ from the empty plan $\pi_0$.
 
-\subsection{Typing}
-
-Let $\vars(t)$ be the variables of a pattern or expression $t$.
+\stitle{Typing}.
+Let $\vars(\cdot)$ denote the variables of a pattern or expression.
 A \emph{typing context} $\Gamma$ maps each variable to a set of types.
-For a plan $\pi$ over schema $\Sc$, $\Gamma_\pi$ is the least context
-closed under the rules below, applied to every triple pattern in $T$,
-$O$, $U$, and $M$:
+The typing context $\Gamma_\pi$ of a plan $\pi$ over an ontology $O$ is
+the least context closed under the following rules, applied to every
+triple pattern of $T$ and $J$:
 \begin{gather*}
 \frac{(?x,\ \kw{rdf{:}type},\ c) \quad c \in C}{c \in \Gamma(?x)}\ (\textsc{T-Type})
 \\[1ex]
@@ -51,43 +55,48 @@ $O$, $U$, and $M$:
 Types are compared up to $\sub$.
 
 \begin{definition}[Well-typed plan]
-A plan $\pi$ is \emph{ill typed} if
+\label{def-typed}
+A plan $\pi$ is \emph{ill typed} over $O$ if
 (1) a literal occurs in subject position;
-(2) a literal is the object of a property $p$ whose range contains a
-class;
-(3) some variable has both a datatype and a class in $\Gamma_\pi$; or
-(4) a class or property in a namespace that $\Sc$ describes is not in
-$C$ or $P$.
-Otherwise it is \emph{well typed}.
+(2) a literal is the object of a property $p$ whose range $\rng(p)$
+contains a class;
+(3) for some variable, $\Gamma_\pi$ holds both a type in $\Lit$ and a
+class; or
+(4) a class or property in a namespace that $O$ describes is not in
+$C$ or $E$.
+Otherwise $\pi$ is \emph{well typed}.
+\end{definition}
+
 Two classes in $\Gamma_\pi(?x)$ that are incomparable under $\sub$ are
 reported as a warning, not an error, because RDF makes the open-world
-assumption and the schema need not declare disjointness.
-\end{definition}
+assumption and $O$ need not declare disjointness.
 
 \begin{definition}[Well-formed plan]
-Let $S_\pi$ be the variables bound by the patterns of $\pi$ and by its
-extensions, and let $S^+_\pi = S_\pi \cup \{?v \mid (\alpha, ?v) \in A\}$.
+\label{def-formed}
+Let $\beta(\pi)$ be the variables bound by $\pi$: the variables of $T$,
+of the \kw{optional} and \kw{union} groups of $J$, and of the extensions
+$X$; the variables of \kw{minus} groups are not bound.
+Let $\beta^+(\pi) = \beta(\pi) \cup \{?v \mid (\varphi, ?v) \in A\}$.
 A plan is \emph{well formed} if
-$\vars(e) \subseteq S_\pi$ for every filter and extension expression;
-no extension binds a variable already in $S_\pi$;
-$\Gamma_{\!g} \subseteq S_\pi$;
-the variables of $H$, $R$, and $\Pi$ are in $S^+_\pi$; and,
-when $A$ or $\Gamma_{\!g}$ is non-empty, every variable of $\Pi$ that
-is in $S_\pi$ is also in $\Gamma_{\!g}$.
+$\vars(e) \subseteq \beta(\pi)$ for every filter and extension $e$;
+no extension binds a variable of $T$ or $J$;
+$K \subseteq \beta(\pi)$;
+the variables of $H$, $R$, and $\Pi$ are in $\beta^+(\pi)$; and,
+when $A$ or $K$ is non-empty, $\Pi \cap \beta(\pi) \subseteq K$.
 \end{definition}
 
-A plan that is both well typed and well formed is \emph{valid}, written
-$\Sc \entails \pi$.
-Validity is decided from $\pi$ and $\Sc$ alone, without evaluating
-$\pi$ on $\G$.
+A plan that is both well typed and well formed over $O$ is
+\emph{valid}, written $O \entails \pi$.
+Validity is decided from $\pi$ and $O$ alone, without evaluating $\pi$
+on $\G$.
 
-\subsection{Goals}
-
+\stitle{Goals}.
 A question constrains the shape of its answer before any query exists:
 ``which department'' asks for entities of one class, ``how many'' for a
 number, ``is there'' for a Boolean.
 
 \begin{definition}[Goal]
+\label{def-goal}
 A goal is $\sigma = (\vec{a}, \kappa, c, m)$: answer variables
 $\vec{a}$, a kind
 $\kappa \in \{\kw{entity}, \kw{literal}, \kw{number}, \kw{boolean}\}$,
@@ -95,74 +104,74 @@ an optional type $c$, and a cardinality $m \in \{\kw{one}, \kw{many}\}$.
 A valid plan $\pi$ \emph{satisfies} $\sigma$, written
 $\pi \models \sigma$, if:
 for $\kappa = \kw{boolean}$, $f = \kw{ASK}$;
-otherwise $f = \kw{SELECT}$, every $a \in \vec{a}$ is in $S^+_\pi$ and
-projected, no other variable is projected, a numeric kind is witnessed
-by an aggregate or a numeric datatype in $\Gamma_\pi(a)$, an entity
-kind has no datatype in $\Gamma_\pi(a)$, and, if $c$ is given, some
-type in $\Gamma_\pi(a)$ is subsumed by $c$.
+otherwise $f = \kw{SELECT}$, $\vec{a} \subseteq \beta^+(\pi)$, the
+projection is exactly $\vec{a}$, a \kw{number} is witnessed by an
+aggregate or a numeric datatype in $\Gamma_\pi$, an \kw{entity} has no
+type in $\Lit$, and, if $c$ is given, some type in $\Gamma_\pi$ is
+subsumed by $c$.
 The cardinality $m = \kw{one}$ is checked after execution:
 $|\eval{\pi}{\G}| = 1$.
 \end{definition}
 
 The goal is derived from the question by the planner, so it can be
-wrong; satisfaction guarantees that the plan has the shape the goal
+wrong; satisfaction guarantees that the plan has the shape its goal
 asks for, not that the goal reflects the question.
 
-\subsection{The Planning Problem}
-
+\stitle{The planning problem}.
 \begin{definition}[Verified query planning]
-Given a question $q$, a graph $\G$, and its schema $\Sc$, a planner
-states a goal $\sigma$ and produces actions $a_1, \dots, a_k$, leading
-to plans $\pi_1, \dots, \pi_k$.
+\label{def-problem}
+Given a question $q$, a graph $\G$, its ontology $O$, and a step budget
+$B$, a policy $\rho$ states a goal $\sigma$ and applies actions
+$a_1, \dots, a_k$ with $k \le B$, producing plans
+$\pi_1, \dots, \pi_k$.
 After each action it receives an observation
 $o_i = (\mathit{ok}_i, n_i, n_{i-1}, \mathit{rows}_i, \mathit{err}_i)$:
 whether $\pi_i$ is valid and runs, its number of solutions
 $n_i = |\eval{\pi_i}{\G}|$, the previous count, a sample of rows, and
 an error message.
 An action whose plan is not valid is rejected and not executed.
-The output $\pi_k$ must satisfy $\Sc \entails \pi_k$ and
+The output $\pi_k$ must satisfy $O \entails \pi_k$ and
 $\pi_k \models \sigma$; among such outputs, the objective is the set
 $F_1$ of $\eval{\pi_k}{\G}$ against the intended answers of $q$.
 \end{definition}
 
-The intended answers are unknown at planning time, so the objective
+The intended answers are unknown during planning, so the objective
 cannot be optimized directly; the observations are the evidence the
-planner has.
-Three properties make the action space suitable for planning.
+policy has.
+Three properties make this action space suitable for planning.
 
 \begin{proposition}[Monotone refinement]
 \label{prop-monotone}
-Let $\pi$ be a plan without optional, minus, union, aggregation, or
-slice, and let $\pi'$ apply \kw{triple} or \kw{filter} to $\pi$.
-Then every mapping in $\eval{\pi'}{\G}$, restricted to $S_\pi$, is a
-mapping in $\eval{\pi}{\G}$.
+Let $\pi$ be a plan with $J = A = \emptyset$ and no slice, and let
+$\pi'$ apply \kw{triple} or \kw{filter} to $\pi$.
+Then every mapping in $\eval{\pi'}{\G}$, restricted to $\beta(\pi)$, is
+a mapping in $\eval{\pi}{\G}$.
 \end{proposition}
 
 \begin{proof}[Proof sketch]
-A mapping of $\pi \bowtie t$ is the union of a compatible mapping of
-$\pi$ and one of $t$, so its restriction to $S_\pi$ is a mapping of
-$\pi$.
+A mapping of the join of $\pi$ with a triple pattern is the union of
+compatible mappings of $\pi$ and of the pattern, so its restriction to
+$\beta(\pi)$ is a mapping of $\pi$.
 Filtering only removes mappings.
 \end{proof}
 
-Proposition~\ref{prop-monotone} is what makes the count in an
-observation informative: within the conjunctive fragment, adding a
-constraint can only narrow the answers seen through the variables
-already present, so a drop from 53 solutions to 1
-(Example~\ref{exa-motivation}) is evidence that the constraint is
-selective.
+Proposition~\ref{prop-monotone} makes the count in an observation
+informative: within the conjunctive fragment, a new constraint can only
+narrow the answers seen through the variables already present, so a
+drop from 53 solutions to 1 (Example~\ref{exa-motivation}) is evidence
+that the constraint is selective.
 
 \begin{proposition}[Static soundness]
 \label{prop-sound}
 If the verifier of Section~\ref{sec-framework} accepts $\pi$, then
-$\Sc \entails \pi$.
+$O \entails \pi$.
 \end{proposition}
 
 \begin{proposition}[Checking cost]
 \label{prop-cost}
-After a one-time closure of $\sub$, deciding $\Sc \entails \pi$ and
+After a one-time closure of $\sub$, deciding $O \entails \pi$ and
 $\pi \models \sigma$ takes time linear in the size of $\pi$, up to the
-cost of set lookups in $\Sc$.
+cost of set lookups in $O$.
 \end{proposition}
 
 Proofs of Propositions~\ref{prop-sound} and~\ref{prop-cost} are in

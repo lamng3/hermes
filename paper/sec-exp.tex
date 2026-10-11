@@ -100,7 +100,7 @@ The OneShot and CGS prompts use generic or unrelated examples.
 \stitle{Implementation}.
 All methods use the same model, Llama~3.1 8B served locally by Ollama
 at temperature 0, the same graph stores, and the same scorer.
-The planners have a budget of 15 steps.
+The planners have a step budget of $B = 15$.
 Experiments run on a single Apple-silicon laptop.
 
 \subsection{RQ1: Effectiveness}

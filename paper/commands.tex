@@ -10,6 +10,19 @@
 % Long code identifiers must not overflow the narrow columns.
 \setlength{\emergencystretch}{2em}
 
+% Tight layout, following the MOIRA paper: no stretched columns, small
+% caption gaps, compact lists and floats. (acmart forbids titlesec.)
+\raggedbottom
+\usepackage[skip=0.5ex]{caption}
+\setlength{\abovecaptionskip}{3pt}
+\setlength{\belowcaptionskip}{3pt}
+\usepackage{enumitem}
+\setlist{nosep, leftmargin=*}
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 2pt}
+
 \newcommand{\hermes}{\textsc{Hermes}\xspace}
 \newcommand{\sparql}{SPARQL\xspace}
 \newcommand{\llm}{LLM\xspace}
