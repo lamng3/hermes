@@ -20,25 +20,25 @@ SYSTEM = (
 ACTIONS = """\
 Actions. Reply with exactly one JSON object per turn.
 Read the graph (the plan does not change):
-  {"op": "lookup", "text": "Karen Brant"}             entities whose label contains the text
-  {"op": "inspect", "iri": "ex:Employee"}             predicates around an entity or a class
+  {"op": "lookup", "text": "Lake Placid"}             entities whose label contains the text
+  {"op": "inspect", "iri": "ex:City"}                 predicates around an entity or a class
 Change the plan (SPARQL algebra):
-  {"op": "triple", "pattern": "?e ex:memberOf ?d"}    add a triple pattern (join)
-  {"op": "filter", "expr": "?price > 100"}
-  {"op": "optional", "patterns": ["?e ex:phone ?p"]}
+  {"op": "triple", "pattern": "?c ex:hosted ?g"}      add a triple pattern (join)
+  {"op": "filter", "expr": "?year > 1900"}
+  {"op": "optional", "patterns": ["?c ex:country ?k"]}
   {"op": "union", "branches": [["?x a ex:A"], ["?x a ex:B"]]}
-  {"op": "minus", "patterns": ["?x ex:retired true"]}
-  {"op": "bind", "expr": "YEAR(?date)", "var": "?year"}
-  {"op": "group", "vars": ["?d"]}
-  {"op": "aggregate", "expr": "COUNT(DISTINCT ?e)", "alias": "?n"}
+  {"op": "minus", "patterns": ["?g ex:season \\"Summer\\""]}
+  {"op": "bind", "expr": "YEAR(?date)", "var": "?y"}
+  {"op": "group", "vars": ["?c"]}
+  {"op": "aggregate", "expr": "COUNT(DISTINCT ?g)", "alias": "?n"}
   {"op": "having", "expr": "?n > 2"}
   {"op": "order", "expr": "DESC(?n)"}
   {"op": "limit", "n": 1}
   {"op": "offset", "n": 1}
-  {"op": "project", "vars": ["?d"]}
+  {"op": "project", "vars": ["?c"]}
   {"op": "distinct"}
   {"op": "ask"}                                       yes/no questions
-  {"op": "remove", "text": "?e ex:phone ?p"}          drop a triple pattern or filter
+  {"op": "remove", "text": "?c ex:country ?k"}        drop a triple pattern or filter
   {"op": "undo"}
   {"op": "finish"}                                    when the query answers the question"""
 

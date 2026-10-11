@@ -14,16 +14,16 @@ from hermes.systems import register
 from hermes.systems.algebra_agent import ACTIONS, AlgebraAgent
 
 GOAL = """\
-State the goal first, like a theorem:
-  {"op": "goal", "answer": ["?d"], "kind": "entity", "type": "ex:Department", "many": true}
+State the goal first:
+  {"op": "goal", "answer": ["?c"], "kind": "entity", "type": "ex:City", "many": true}
   kind is entity, literal, number or boolean; type is optional; many is false for one answer.
 """
 
 RULES = """\
-Rules: state the goal first. A kernel checks every step before it runs and
+Rules: state the goal first. A verifier checks every step before it runs and
 rejects ill-typed ones with a message; read it and fix the step. Use only the
 prefixes and terms shown or found with lookup and inspect. Look entities up
-before using them. Finish only when the proof state says goals accomplished."""
+before using them. Finish only when the plan state says goals accomplished."""
 
 
 @register("prover")
@@ -37,9 +37,9 @@ class Prover(AlgebraAgent):
 
     def state(self, explorer):
         if explorer.goal is None:
-            return "Proof state:\n  no goal stated yet"
+            return "Plan state:\n  no goal stated yet"
         judgment = explorer.observe(explorer.plan).judgment
-        return "Proof state:\n" + judgment.render(explorer.short)
+        return "Plan state:\n" + judgment.render(explorer.short)
 
     def refuse_finish(self, explorer):
         if explorer.goal is None:

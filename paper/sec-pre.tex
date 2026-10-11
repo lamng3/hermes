@@ -1,0 +1,64 @@
+\section{Preliminaries}
+\label{sec-pre}
+
+\stitle{RDF graphs and schemas}.
+Let $I$, $B$, and $L$ be disjoint sets of IRIs, blank nodes, and
+literals.
+An RDF graph $\G$ is a finite set of triples
+$(s, p, o) \in (I \cup B) \times I \times (I \cup B \cup L)$.
+A schema $\Sc = (C, P, \dom, \rng, \sub)$ over $\G$ consists of a set
+of classes $C \subseteq I$, a set of properties $P \subseteq I$, the
+domains $\dom(p) \subseteq C$ and ranges
+$\rng(p) \subseteq C \cup D$ of each property, where $D$ is a set of
+datatypes, and the reflexive--transitive closure $\sub$ of
+\kw{rdfs{:}subClassOf}~\cite{rdfs11}.
+A type is a class or a datatype; $\Lit$ denotes the datatypes and
+\kw{rdfs{:}Literal}.
+
+\stitle{The SPARQL algebra}.
+Let $\V$ be a set of variables, disjoint from $I \cup B \cup L$.
+A triple pattern is a triple over $I \cup L \cup \V$.
+Following Pérez et al.~\cite{perez2009semantics} and the SPARQL 1.1
+specification~\cite{sparql11}, a solution mapping $\mu$ is a partial
+function from $\V$ to $I \cup B \cup L$, two mappings are compatible
+when they agree on their shared variables, and a graph pattern $P$
+evaluates on $\G$ to a multiset of mappings $\eval{P}{\G}$.
+Patterns are built from basic graph patterns (BGPs) by the operators
+in Table~\ref{tab-ops}.
+Evaluating SPARQL graph patterns is PSPACE-complete in
+general~\cite{perez2009semantics}, so executing a plan to inspect it is
+not free; this motivates checking what can be checked without
+execution.
+
+\begin{table}[t]
+  \caption{SPARQL algebra operators and the \hermes actions that apply them.}
+  \label{tab-ops}
+  \small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Operator & Meaning & Action \\
+    \midrule
+    BGP, Join & conjunction of triple patterns & \kw{triple} \\
+    Filter & keep mappings satisfying $e$ & \kw{filter} \\
+    LeftJoin & optional extension & \kw{optional} \\
+    Union & either branch & \kw{union} \\
+    Minus & remove compatible mappings & \kw{minus} \\
+    Extend & bind $?v$ to $e$ & \kw{bind} \\
+    Group, Aggregate & group, then aggregate & \kw{group}, \kw{aggregate} \\
+    Filter on groups & HAVING & \kw{having} \\
+    OrderBy & sort & \kw{order} \\
+    Project, Distinct & restrict, deduplicate & \kw{project}, \kw{distinct} \\
+    Slice & LIMIT, OFFSET & \kw{limit}, \kw{offset} \\
+    ASK form & existence & \kw{ask} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\stitle{Natural language to SPARQL}.
+Given a question $q$, a graph $\G$, and its schema $\Sc$, the task is to
+produce a query $Q$ whose answers $\eval{Q}{\G}$ match the intended
+answers of $q$.
+Following the Text2SPARQL evaluation~\cite{text2sparql}, answers are
+compared as sets of values: every value bound to every projected
+variable counts once, and quality is measured by set precision, recall,
+and $F_1$ against the answers of a gold query.

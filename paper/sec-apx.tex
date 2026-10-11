@@ -1,0 +1,155 @@
+\subsection*{A. Theorems and Proofs}
+
+\stitle{Proposition~\ref{prop-monotone} (Monotone refinement)}.
+\begin{proof}
+Let $\pi$ be a plan whose pattern is a conjunction of triple patterns
+and filters, and let $\mu' \in \eval{\pi'}{\G}$.
+If $\pi'$ adds a triple pattern $t$, then by the semantics of join
+$\mu' = \mu \cup \nu$ for some $\mu \in \eval{\pi}{\G}$ and
+$\nu \in \eval{t}{\G}$ that are compatible, so the restriction of
+$\mu'$ to $S_\pi = \dom(\mu)$ is $\mu$.
+If $\pi'$ adds a filter $e$, then
+$\eval{\pi'}{\G} = \{\mu \in \eval{\pi}{\G} \mid \mu \models e\}$.
+In both cases the restriction of $\mu'$ to $S_\pi$ is in
+$\eval{\pi}{\G}$.
+\end{proof}
+
+\stitle{Proposition~\ref{prop-sound} (Static soundness)}.
+\warn{[Proof to be written: by induction on the structure of the plan,
+following Algorithm~\ref{alg-verify}, showing that each condition of
+the definitions of well-typed and well-formed plans is checked.]}
+
+\stitle{Proposition~\ref{prop-cost} (Checking cost)}.
+\warn{[Proof to be written: one pass over the triple patterns with
+constant-time schema lookups, one pass over expressions, and a
+precomputed subclass closure.]}
+
+\subsection*{B. Algorithms and Analysis}
+
+Algorithm~\ref{alg-plan} is the planning loop of
+Section~\ref{sec-framework}; Algorithm~\ref{alg-verify} is the
+verifier.
+
+\begin{algorithm}[t]
+\caption{Verified query planning}
+\label{alg-plan}
+\KwIn{question $q$, graph $\G$, schema $\Sc$, policy $\rho$, step budget $k$}
+\KwOut{a plan $\pi$}
+$\pi \leftarrow \pi_0$; $\sigma \leftarrow \bot$; $h \leftarrow [\,]$\;
+\For{$i \leftarrow 1$ \KwTo $k$}{
+  $a \leftarrow \rho(q, \Sc, \pi, \sigma, h)$\;
+  \uIf{$a$ is \kw{goal}}{$\sigma \leftarrow a.\sigma$; $o \leftarrow \textsc{Verify}(\pi, \sigma)$\;}
+  \uElseIf{$a$ is \kw{lookup} or \kw{inspect}}{$o \leftarrow$ read $\G$\;}
+  \uElseIf{$a$ is \kw{finish}}{
+    \lIf{$\textsc{Verify}(\pi, \sigma)$ has no errors and no open goals}{\Return $\pi$}
+    $o \leftarrow$ refusal with the open goals\;}
+  \Else{
+    $\pi' \leftarrow a(\pi)$; $o \leftarrow \textsc{Verify}(\pi', \sigma)$\;
+    \If{$o$ has no errors}{
+      $o \leftarrow o \cup \{|\eval{\pi'}{\G}|$, sample$\}$\;
+      \lIf{$\pi'$ runs}{$\pi \leftarrow \pi'$}}}
+  append $(a, o)$ to $h$\;
+}
+\Return the last plan in $h$ that runs\;
+\end{algorithm}
+
+\begin{algorithm}[t]
+\caption{\textsc{Verify}$(\pi, \sigma)$}
+\label{alg-verify}
+\KwIn{plan $\pi$, goal $\sigma$ (possibly $\bot$), schema $\Sc$}
+\KwOut{errors $E$, context $\Gamma$, open goals $G$}
+$E \leftarrow \emptyset$; $\Gamma \leftarrow \emptyset$\;
+\ForEach{triple pattern $(s, p, o)$ of $\pi$}{
+  \lIf{$p$ or a class in a described namespace is unknown}{add to $E$}
+  \lIf{$s$ is a literal, or $o$ is a literal and $\rng(p)$ has a class}{add to $E$}
+  add $\dom(p)$ to $\Gamma(s)$, $\rng(p)$ to $\Gamma(o)$, and $c$ to $\Gamma(s)$ for $(s, \kw{rdf{:}type}, c)$\;
+}
+\lForEach{variable with both a class and a datatype in $\Gamma$}{add to $E$}
+check the scope and grouping conditions of the well-formed definition, adding violations to $E$\;
+$G \leftarrow$ the conditions of $\pi \models \sigma$ that fail\;
+\Return $(E, \Gamma, G)$\;
+\end{algorithm}
+
+\warn{[Complexity analysis of Algorithms~\ref{alg-plan}
+and~\ref{alg-verify}: to be written with Proposition~\ref{prop-cost}.]}
+
+\subsection*{C. Evaluation Details}
+
+\stitle{Scorer parity}.
+The official Text2SPARQL scorer flattens every value of every variable
+into one set and scores it with trec\_eval~\cite{treceval}.
+We rescored the predicted result sets of all eight published 2026
+entries on CK26 and DB26 and compared every per-question score and
+every average with the official files: all 5,024 numbers agree exactly.
+The check is a script in the artifact.
+
+\stitle{Quirks of the official metric}.
+(1) An ASK answer is scored as one document named \kw{true} with
+relevance 1 or 0. A gold \kw{true} therefore scores 1.0 whatever the
+system answers, and a gold \kw{false} scores 0.0 for every system.
+(2) Every returned value has the same score, so trec\_eval orders
+values by their text, and the official nDCG ignores the order the
+system returned.
+(3) The official $F_{\mathrm{ndcg}}$ average counts the mean nDCG of
+the scope once more as an extra item.
+Our official column reproduces all three; the strict column scores
+Booleans by exact match, uses the returned order for nDCG, and takes a
+plain mean.
+
+\stitle{Engine dependence of the CK gold answers}.
+Of the seven CK26 gold queries that do not reproduce on Oxigraph, two
+break ties under \kw{LIMIT} differently, two use \kw{xsd{:}int()}, which
+is not a SPARQL 1.1 function, two format computed numbers differently
+(\eg \kw{3} against \kw{3.0}), and one computes a different value for
+an arithmetic expression.
+On rdflib, 42 of 50 reproduce.
+
+\subsection*{D. Prompts}
+
+Figure~\ref{fig-prompt} is the action catalogue and the rules shown to
+the planner at every turn, followed by the vocabulary, the linked
+entities, the history of actions and observations, the plan state, and
+the current query.
+\hermes{}$^-$ uses the same catalogue without the goal action, no plan
+state, and shorter rules: use only the terms shown or found, look
+entities up before using them, project only the answer variables, and
+finish when the result looks right.
+
+\begin{figure*}[t]
+\scriptsize
+\begin{verbatim}
+State the goal first:
+  {"op": "goal", "answer": ["?c"], "kind": "entity", "type": "ex:City", "many": true}
+  kind is entity, literal, number or boolean; type is optional; many is false for one answer.
+Actions. Reply with exactly one JSON object per turn.
+Read the graph (the plan does not change):
+  {"op": "lookup", "text": "Lake Placid"}             entities whose label contains the text
+  {"op": "inspect", "iri": "ex:City"}                 predicates around an entity or a class
+Change the plan (SPARQL algebra):
+  {"op": "triple", "pattern": "?c ex:hosted ?g"}      add a triple pattern (join)
+  {"op": "filter", "expr": "?year > 1900"}
+  {"op": "optional", "patterns": ["?c ex:country ?k"]}
+  {"op": "union", "branches": [["?x a ex:A"], ["?x a ex:B"]]}
+  {"op": "minus", "patterns": ["?g ex:season \"Summer\""]}
+  {"op": "bind", "expr": "YEAR(?date)", "var": "?y"}
+  {"op": "group", "vars": ["?c"]}
+  {"op": "aggregate", "expr": "COUNT(DISTINCT ?g)", "alias": "?n"}
+  {"op": "having", "expr": "?n > 2"}
+  {"op": "order", "expr": "DESC(?n)"}
+  {"op": "limit", "n": 1}
+  {"op": "offset", "n": 1}
+  {"op": "project", "vars": ["?c"]}
+  {"op": "distinct"}
+  {"op": "ask"}                                       yes/no questions
+  {"op": "remove", "text": "?c ex:country ?k"}        drop a triple pattern or filter
+  {"op": "undo"}
+  {"op": "finish"}                                    when the query answers the question
+
+Rules: state the goal first. A verifier checks every step before it runs and
+rejects ill-typed ones with a message; read it and fix the step. Use only the
+prefixes and terms shown or found with lookup and inspect. Look entities up
+before using them. Finish only when the plan state says goals accomplished.
+\end{verbatim}
+\caption{Planner prompt: action catalogue and rules.}
+\label{fig-prompt}
+\end{figure*}

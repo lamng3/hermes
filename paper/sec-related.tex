@@ -1,0 +1,53 @@
+\section{Related Work}
+\label{sec-related}
+
+\stitle{Natural language interfaces to data}.
+Natural language interfaces to relational databases map a parsed
+question onto SQL, and NaLIR made the mapping interactive by asking the
+user to resolve ambiguities~\cite{li2014nalir}.
+For RDF, gAnswer casts question answering as subgraph matching between
+a semantic query graph and the knowledge graph~\cite{zou2014natural},
+and template decomposition answers complex questions by composing
+binary templates mined from the graph~\cite{zheng2018question}.
+GraphLingo explores domain knowledge graphs in natural language by
+synchronizing them with an LLM~\cite{le2024graphlingo}.
+Benchmarks for question answering over RDF include LC-QuAD
+2.0~\cite{dubey2019lcquad}, QALD-9-plus~\cite{qald9plus},
+QALD-10~\cite{qald10}, and the Text2SPARQL
+challenges~\cite{text2sparql2025,text2sparql}.
+
+\stitle{LLM-based text-to-SQL}.
+With LLMs, text-to-SQL has moved to prompting and fine-tuning.
+DAIL-SQL studies how question representation and example selection
+shape LLM prompts~\cite{gao2024dailsql}, PURPLE retrieves demonstrations
+that match the logical operators a question needs~\cite{ren2024purple},
+CodeS pre-trains open models for SQL generation~\cite{li2024codes}, and
+NL2SQL360 evaluates these systems along many dimensions~\cite{li2024dawn}.
+These methods emit a whole query and improve it by better context or
+better models; none types the query against the schema before it runs.
+
+\stitle{LLM-based text-to-SPARQL}.
+SPARQL-LLM, the strongest entry of the 2026 Text2SPARQL challenge,
+generates SPARQL from natural-language questions in real
+time~\cite{smeros2026sparqlllm}.
+ARUQULA explores the graph with tools in a ReAct loop before writing a
+query~\cite{brei2025aruqula}.
+UniQGen extracts a table of constraints from the question and the graph
+and refines a query with Chase and Backchase against reference answers
+from an LLM, rendering it to SPARQL or Cypher~\cite{wang2026uniqgen}.
+\hermes differs from these in its unit of generation: an operator of
+the SPARQL algebra rather than a query string or a constraint table,
+checked against the schema before execution and observed after it.
+
+\stitle{Query optimization and SPARQL semantics}.
+Cost-based optimizers choose among algebraically equivalent plans by
+estimating the effect of each operator~\cite{selinger1979access}, and
+cardinality estimates dominate the quality of the chosen
+plan~\cite{leis2015good}.
+Chase and Backchase reformulates queries under constraints and
+minimizes them~\cite{deutsch1999chase}.
+Pérez et al.\ gave SPARQL a compositional semantics and characterized
+the complexity of its evaluation~\cite{perez2009semantics}.
+\hermes borrows the optimizer's step, one operator with an observed
+effect, and the algebra's semantics, and uses them to generate a query
+rather than to rewrite one.
