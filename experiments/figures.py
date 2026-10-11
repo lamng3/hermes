@@ -1,4 +1,4 @@
-"""Build the paper's figures from the run outputs in results/.
+"""Build the paper's two figures from the run outputs in results/.
 
     PYTHONPATH=src python experiments/figures.py [--results results] [--out paper/fig]
 
@@ -13,7 +13,6 @@ every bar is labeled).
 import argparse
 import glob
 import json
-import statistics
 from pathlib import Path
 
 import matplotlib
@@ -66,7 +65,10 @@ def latest_runs(results, benchmark):
             runs[config] = {
                 "metrics": json.loads((folder / "metrics.json").read_text()),
                 "run": json.loads((folder / "run.json").read_text()),
-                "rows": [json.loads(line) for line in (folder / "predictions.jsonl").read_text().splitlines()],
+                "rows": [
+                    json.loads(line)
+                    for line in (folder / "predictions.jsonl").read_text().splitlines()
+                ],
             }
     return runs
 
@@ -116,34 +118,6 @@ def outcomes(runs, out):
     plt.close(fig)
 
 
-def features(runs, out, benchmark_items):
-    """Set F1 by feature tag of the gold query."""
-    order = [c for c in ("training-free", "uniqgen", "algebra-agent", "prover") if c in runs]
-    tags = ["SELECT", "FILTER", "ORDER", "SUBSELECT", "GROUP", "COUNT", "LIMIT", "ASK"]
-    fig, ax = plt.subplots(figsize=(COLUMN, 2.1))
-    height = 0.8 / len(order)
-    for j, config in enumerate(order):
-        scores = {r["id"]: r["scores"]["set_F"] for r in runs[config]["rows"]}
-        for i, tag in enumerate(tags):
-            ids = [k for k, f in benchmark_items.items() if tag in f]
-            value = statistics.fmean(scores[k] for k in ids)
-            y = i + (j - (len(order) - 1) / 2) * height
-            bar(ax, y, value, config, height * 0.92)
-            if value > 0:
-                ax.text(value + 0.005, y, f"{value:.2f}", va="center", fontsize=5.5, color=MUTED)
-    labels = [f"{t} ({sum(1 for f in benchmark_items.values() if t in f)})" for t in tags]
-    ax.set_yticks(range(len(tags)), labels)
-    ax.invert_yaxis()
-    ax.set_xlim(0, 0.36)
-    ax.set_xlabel("set $F_1$ on CK26 (items per tag in parentheses)")
-    clean(ax)
-    handles = [plt.Rectangle((0, 0), 1, 1, facecolor=METHODS[c][1], edgecolor="white",
-                             hatch="////" if METHODS[c][2] else None) for c in order]
-    ax.legend(handles, [METHODS[c][0] for c in order], loc="lower right", frameon=False)
-    fig.savefig(out / "features.pdf")
-    plt.close(fig)
-
-
 def cost(runs, out):
     """F1 against model calls per item."""
     fig, ax = plt.subplots(figsize=(COLUMN, 1.75))
@@ -171,35 +145,6 @@ def cost(runs, out):
     plt.close(fig)
 
 
-def leaderboard(runs, results, out):
-    """Our runs against the published 2026 entries on CK26."""
-    peers = json.loads(Path(results, "peers", "ck26.json").read_text())["teams"]
-    rows = [(name.replace("INFAI-ETI-AND-FRIENDS", "INFAI-ETI"), v.get("set_F_ndcg", v["set_F"]), None)
-            for name, v in peers.items()]
-    for config in ("prover", "algebra-agent", "uniqgen", "training-free"):
-        if config in runs:
-            value = runs[config]["metrics"]["official"]["average"]["set_F_ndcg"]
-            rows.append((METHODS[config][0] + " (8B)", value, config))
-    rows.sort(key=lambda r: -r[1])
-    fig, ax = plt.subplots(figsize=(COLUMN, 0.19 * len(rows) + 0.35))
-    for i, (name, value, config) in enumerate(rows):
-        if config:
-            bar(ax, i, value, config, 0.7)
-        else:
-            ax.barh(i, value, height=0.7, color=GRAY, edgecolor="white", linewidth=1.0)
-        ax.text(value + 0.01, i, f"{value:.3f}", va="center", fontsize=5.5, color=MUTED)
-    ax.set_yticks(range(len(rows)), [r[0] for r in rows])
-    for tick, (_name, _value, config) in zip(ax.get_yticklabels(), rows, strict=True):
-        if config:
-            tick.set_fontweight("bold")
-    ax.invert_yaxis()
-    ax.set_xlim(0, 0.95)
-    ax.set_xlabel("$F_{\\mathrm{ndcg}}$ on CK26; gray: published entries, scored by the organizers")
-    clean(ax)
-    fig.savefig(out / "leaderboard.pdf")
-    plt.close(fig)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", default="results")
@@ -208,14 +153,9 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     style()
-    from hermes import benchmarks
-
-    items = {i.id: i.features for i in benchmarks.load("ck26").items}
     runs = latest_runs(args.results, "ck26")
     outcomes(runs, out)
-    features({k: v for k, v in runs.items() if k != "uniqgen-gold-oracle"}, out, items)
     cost(runs, out)
-    leaderboard(runs, args.results, out)
     print(f"wrote {sorted(p.name for p in out.glob('*.pdf'))} from runs: {sorted(runs)}")
 
 
