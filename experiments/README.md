@@ -6,6 +6,9 @@ rewrites `results/LEADERBOARD.md`. Pass config paths to run a subset.
 `python experiments/figures.py` (with the `figures` extra installed) rebuilds
 the paper's figures in `paper/fig/` from the latest finished run of each
 configuration, so the charts follow the results.
+`python experiments/tables.py` does the same for the result tables
+(`paper/tab-*.tex`). `results/reports/` records each study's config,
+runs, and results.
 
 ## Where to run
 
