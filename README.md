@@ -1,22 +1,47 @@
-# Hermes
+# Hermes: Natural Language to SPARQL over Ontologies
 
-Hermes carries a question across to the graph. It is a research framework for
-turning natural-language questions into SPARQL, named for the Greek messenger
-and interpreter. Every method is a *system* behind one interface, every
-benchmark is in one normalized format, and every experiment is a config whose
-results land in `results/`. New methods are compared with existing ones, and
-with the published Text2SPARQL'26 scores, on the same footing.
-
-Install name: `hermes-sparql`. Import name: `hermes`.
-
-[Documentation](https://lamng3.github.io/hermes-docs/)
+**Lam Nguyen** · [Code](https://github.com/lamng3/hermes) · [Documentation](https://lamng3.github.io/hermes-docs/) · [Leaderboard](results/LEADERBOARD.md) · [Paper outline](paper/README.md)
 
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+
+## Abstract
+
+Hermes carries a question across to the graph. Named for the Greek messenger
+and interpreter, it is a research framework for translating natural-language
+questions into SPARQL over ontologies and knowledge graphs. Existing methods
+are reimplemented as interchangeable *systems* behind one interface,
+benchmarks are converted into one normalized format, and every experiment is
+a config whose predictions, metrics and provenance are kept under `results/`.
+On top of this foundation we study NL-to-SPARQL as planning over the SPARQL
+algebra: a query is built one operator at a time, and execution on the graph
+after each operator tells the planner what that operator did, the way a query
+optimizer costs a rewrite before taking it. We evaluate on the Text2SPARQL
+challenge and on QALD, with a scorer that reproduces the official
+Text2SPARQL'26 numbers exactly, so new systems are compared with existing
+ones and with the published entries on the same footing.
+
+## Contributions
+
+1. **SPARQL algebra as actions.** Operators of the SPARQL 1.1 algebra as
+   symbolic actions, with an explorer that reports cardinality, deltas,
+   samples and errors after every step (`hermes.algebra`).
+2. **One interface for methods.** Prompt-only generation, UniQGen
+   (Chase & Backchase, [arXiv:2605.00845](https://arxiv.org/abs/2605.00845))
+   and an algebra agent run as swappable systems over local files or remote
+   endpoints.
+3. **Normalized benchmarks.** Text2SPARQL CK25, CK26, DB25, DB26, QALD-10 and
+   QALD-9-plus in one format, with pinned sources, licenses and documented
+   caveats (`data/`).
+4. **Comparable evaluation.** The official Text2SPARQL metrics reproduced on
+   all 5,024 published scores, plus a strict variant and a reproducible
+   subset (`hermes.evaluation`, `experiments/check_scorer.py`).
+
+Install name: `hermes-sparql`. Import name: `hermes`.
 
 ## Layout
 
 ```
-src/hermes/      the library: stores, systems, algebra, benchmarks, evaluation
+src/hermes/      the framework: stores, systems, algebra, benchmarks, evaluation
 data/            normalized benchmarks and the graphs they run on (see data/README.md)
 configs/         one YAML file per experiment: benchmark x system x model
 experiments/     the protocol and the script that reproduces every result
@@ -154,6 +179,17 @@ changes elsewhere:
 | Decorator | `CachedStore`, `CachedLLM` |
 | Command, builder | algebra actions and `render(plan)` |
 | Template method, observer | `Run.evaluate` (predict, execute, score), run observers |
+
+## Citation
+
+```bibtex
+@misc{nguyen2026hermes,
+  title  = {Hermes: Natural Language to SPARQL over Ontologies},
+  author = {Nguyen, Lam},
+  year   = {2026},
+  url    = {https://github.com/lamng3/hermes}
+}
+```
 
 ## License
 

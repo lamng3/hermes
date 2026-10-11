@@ -1,4 +1,4 @@
-"""Hermes: natural language to SPARQL, with pluggable systems."""
+"""Hermes: natural language to SPARQL over ontologies. A research framework."""
 
 from hermes import systems
 from hermes.context import Context, Example

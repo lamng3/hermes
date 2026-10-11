@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Hermes: Natural Language to SPARQL with Pluggable Systems"
+title: "Hermes: Natural Language to SPARQL over Ontologies"
 authors:
   - family-names: Nguyen
     given-names: Lam
