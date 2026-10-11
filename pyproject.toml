@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hermes-sparql"
 version = "0.2.0"
-description = "NL-to-SPARQL research framework: pluggable systems, normalized benchmarks, reproducible experiments"
+description = "Hermes: natural language to SPARQL over ontologies. A research framework."
 authors = [
   { name = "Lam Nguyen", email = "lamng3.work@gmail.com" },
 ]
