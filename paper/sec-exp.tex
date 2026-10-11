@@ -141,8 +141,8 @@ model, OneShot reaches 0.017, as on CK26.
     \midrule
     CK26 & OneShot & 0.036 & 0.015 & 0.017 & 0.018 & 0.017 \\
          & CGS & 0.061 & 0.142 & 0.064 & 0.064 & 0.064 \\
-         & \hermes{}$^-$ & \textbf{0.101} & \textbf{0.300} & \textbf{0.094} & \textbf{0.094} & \textbf{0.094} \\
-         & \hermes & \warn{--} & \warn{--} & \warn{--} & \warn{--} & \warn{--} \\
+         & \cellcolor{hermesbg}\hermes{}$^-$ & \cellcolor{hermesbg}\textbf{0.101} & \cellcolor{hermesbg}\textbf{0.300} & \cellcolor{hermesbg}\textbf{0.094} & \cellcolor{hermesbg}\textbf{0.094} & \cellcolor{hermesbg}\textbf{0.094} \\
+         & \cellcolor{hermesbg}\hermes & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} \\
          & CGS, gold oracle & 0.082 & 0.229 & 0.086 & 0.086 & 0.086 \\
     \midrule
     DB26 & OneShot & 0.038 & 0.011 & 0.017 & 0.017 & 0.017 \\
@@ -150,24 +150,35 @@ model, OneShot reaches 0.017, as on CK26.
   \end{tabular}
 \end{table}
 
-For scale, Figure~\ref{fig-leaderboard} places our runs among the
-published 2026 entries on CK26, which range from 0.157 to 0.832 in
+For scale, Table~\ref{tab-peers} places our runs among the published
+2026 entries on CK26, which range from 0.157 to 0.832 in
 $F_{\mathrm{ndcg}}$~\cite{smeros2026sparqlllm,text2sparql}.
 This is not a paired comparison: those systems were scored by the
 organizers on Tentris, and their models are not controlled here.
 Every method in Table~\ref{tab-main} uses an 8B local model and stays
 below the weakest entry.
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\columnwidth]{fig/leaderboard.pdf}
-  \caption{Our CK26 runs (8B local model) among the published
-    Text2SPARQL 2026 entries (gray), scored by the organizers.
-    Hatching marks the variant without the verifier.}
-  \label{fig-leaderboard}
-\end{figure}
+\begin{table}[t]
+  \caption{CK26 $F_{\mathrm{ndcg}}$ of the published Text2SPARQL 2026
+    entries, scored by the organizers, and of our runs (shaded, 8B local
+    model).}
+  \label{tab-peers}
+  \small
+  \begin{tabular}{@{}lr@{\hspace{2em}}lr@{}}
+    \toprule
+    Entry & $F_{\mathrm{ndcg}}$ & Entry & $F_{\mathrm{ndcg}}$ \\
+    \midrule
+    SPARQL-LLM~\cite{smeros2026sparqlllm} & \textbf{0.832} & IRIS & 0.217 \\
+    INFAI-ETI-A & 0.633 & LIBER-AI-QWEN & 0.206 \\
+    ADFR & 0.513 & INFAI-ETI-B & 0.157 \\
+    INFAI-ETI-C & 0.452 & \cellcolor{hermesbg}\hermes{}$^-$ & \cellcolor{hermesbg}0.094 \\
+    LIBER-AI-CLAUDE & 0.335 & \cellcolor{ours}CGS & \cellcolor{ours}0.064 \\
+    & & \cellcolor{ours}OneShot & \cellcolor{ours}0.018 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-Figure~\ref{fig-features} breaks CK26 down by the feature tags of the
+Table~\ref{tab-features} breaks CK26 down by the feature tags of the
 gold queries.
 Operator-level planning gains most on plain selections and filters.
 No method answers aggregation, slicing, or ASK questions: every $F_1$
@@ -177,13 +188,26 @@ These are exactly the questions whose answer shape (a number, a single
 value, a Boolean) a goal states before the query exists, which is what
 the verified planner is designed to enforce.
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\columnwidth]{fig/features.pdf}
+\begin{table}[t]
   \caption{CK26 set $F_1$ by feature tag of the gold query; a question
-    can carry several tags. Unlabeled bars are 0.}
-  \label{fig-features}
-\end{figure}
+    can carry several tags, and $n$ counts items. Best per row in bold.}
+  \label{tab-features}
+  \small
+  \begin{tabular}{@{}lrrr>{\columncolor{hermesbg}}r@{}}
+    \toprule
+    Tag & $n$ & OneShot & CGS & \hermes{}$^-$ \\
+    \midrule
+    \kw{SELECT} & 94 & 0.018 & 0.068 & \textbf{0.100} \\
+    \kw{FILTER} & 10 & 0.007 & \textbf{0.293} & 0.290 \\
+    \kw{ORDER} & 30 & 0.012 & \textbf{0.025} & 0.022 \\
+    \kw{SUBSELECT} & 8 & \zero & 0.011 & \textbf{0.022} \\
+    \kw{GROUP} & 18 & \zero & \textbf{0.019} & 0.012 \\
+    \kw{COUNT} & 16 & \zero & \textbf{0.016} & 0.013 \\
+    \kw{LIMIT} & 26 & \zero & \textbf{0.029} & 0.002 \\
+    \kw{ASK} & 6 & \zero & \zero & \zero \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsection{RQ2: Components}
 
@@ -240,8 +264,8 @@ self-consistency at 15 calls per item.]}
     \midrule
     OneShot & 116 & 136 & 3.0 & 24 \\
     CGS & 198 & 667 & 15.1 & 41 \\
-    \hermes{}$^-$ & 1,451 & 422 & 24.4 & 4 \\
-    \hermes & \warn{--} & \warn{--} & \warn{--} & \warn{--} \\
+    \rowcolor{hermesbg}\hermes{}$^-$ & 1,451 & 422 & 24.4 & \textbf{4} \\
+    \rowcolor{hermesbg}\hermes & \warn{--} & \warn{--} & \warn{--} & \warn{--} \\
     \bottomrule
   \end{tabular}
 \end{table}
