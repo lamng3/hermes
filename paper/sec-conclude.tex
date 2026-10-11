@@ -7,14 +7,14 @@ Plans are typed against the RDF schema and checked without execution;
 actions are algebra operators whose effect on the graph is observed;
 and a plan is accepted only when it is valid and satisfies a goal
 derived from the question.
-On the Text2SPARQL 2026 corporate benchmark with a small open model
-(Llama~3.1 8B),
-operator-level planning outperforms one-shot generation and
-constraint-guided search and almost always ends with a runnable query,
-at a higher call budget.
-All methods fail on aggregation and ASK questions, whose answer shape a
-goal can state in advance.
-Next steps are the evaluation of the full verified planner, a
-budget-matched comparison, ablations of the observation, the DBpedia
-and Wikidata benchmarks, and the proofs in Appendix~A.
-\warn{[Update once the pending runs finish.]}
+On the Text2SPARQL 2026 corporate benchmark with Qwen3 models from 4B
+to 14B parameters, \hermes is the most accurate method at 14B
+($F_1$ 0.282), and its accuracy grows fastest with model size.
+The verifier cuts the items without a runnable query at every size, but
+raises accuracy only at 14B: most of the queries it recovers from the
+smaller models score zero.
+No method answers ASK questions, whose answer shape a goal can state in
+advance.
+Next steps are API and larger open models, a budget-matched comparison,
+ablations of the observation, the DBpedia and Wikidata benchmarks, and
+the proofs in Appendix~A.

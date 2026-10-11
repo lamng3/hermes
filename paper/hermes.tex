@@ -49,15 +49,12 @@ typed and satisfies a goal derived from the question.
 reach the graph store, and an LLM planner that drives it.
 (4) We normalize six benchmarks into one format and implement a scorer
 that reproduces every published Text2SPARQL 2026 score.
-All experiments use one small open model, Llama~3.1 8B, run locally.
-On the Text2SPARQL 2026 corporate benchmark,
-operator-level planning reaches a set $F_1$ of 0.094 and a recall of
-0.300 and ends with a runnable query on 96 of 100 items, against 0.064
-for constraint-guided search and 0.017 for one-shot generation, at a
-higher model-call budget.
-\warn{[Provisional: the operator-level numbers come from a run whose
-prompt examples named CK26 content; a rerun is in progress. Pending:
-the full verified planner, a budget-matched comparison, and DBpedia.]}
+We evaluate with Qwen3 models of 4B, 8B, and 14B parameters.
+On the Text2SPARQL 2026 corporate benchmark with the 14B model,
+\hermes reaches a set $F_1$ of 0.282, against 0.231 without the
+verifier, 0.197 for constraint-guided search, and 0.089 for one-shot
+generation, at a higher model-call budget; the verifier cuts the items
+without a runnable query from 26 to 9.
 \end{abstract}
 
 \keywords{SPARQL, knowledge graphs, natural language interfaces, query algebra, query planning, language agents}

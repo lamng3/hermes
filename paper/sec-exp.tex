@@ -9,7 +9,8 @@ model and on the same graph store?
 and the reference answers contribute?
 \textbf{[RQ3] Cost}: how many model calls, graph executions, and how
 much time does each method spend?
-All configurations and run outputs are in the artifact.
+All configurations, run outputs, and the scripts that build every table
+and figure here from them are in the artifact.
 
 \subsection{Experimental Setup}
 
@@ -20,8 +21,8 @@ with its gold query, feature tags (\eg \kw{COUNT}, \kw{GROUP},
 \kw{ORDER}, \kw{ASK}), and gold answers stored as in the official
 Text2SPARQL scorer.
 Sources are pinned to commits and checksums.
-This paper reports CK26 and DB26, the two tracks of the Text2SPARQL 2026
-challenge~\cite{text2sparql}.
+This paper reports CK26, the corporate track of the Text2SPARQL 2026
+challenge~\cite{text2sparql}; DB26, its DBpedia track, is in progress.
 CK26 asks 50 questions in English and German over a corporate graph of
 products, suppliers, and employees (13 classes, 30 properties, about
 26.6k triples), loaded locally; DB26 asks 50 questions in English and
@@ -82,162 +83,160 @@ queries are rendered from constraints deterministically rather than by
 a second model, and candidates are scored by comparing answer sets with
 the reference answers rather than by a model.
 It uses two model calls per question, one for the constraint table and
-one for the reference answers, and beam width 5.
+one for the reference answers, beam width 5, and depth 5.
 \emph{\hermes{}$^-$} is the planner of Section~\ref{sec-framework} with
 the verifier disabled: execution feedback, no typing, no goal.
 \emph{\hermes} is the full verified planner.
-\warn{[Pending: \hermes run on CK26 and DB26.]}
+Both planners have a step budget of $B = 15$, and their prompt examples
+use an unrelated domain (Olympic host cities, Figure~\ref{fig-prompt});
+no prompt names CK26 content.
 
-\stitle{Prompt overlap}.
-\warn{The \hermes{}$^-$ run reported in this draft used an earlier
-planner prompt whose action examples named one CK26 entity (an employee
-in item 1) and two CK26 properties (\kw{memberOf} and \kw{phone}).
-The examples now use an unrelated domain (Figure~\ref{fig-prompt}), and
-a rerun with the corrected prompt is in progress; until it finishes,
-every \hermes{}$^-$ number in this section is provisional.}
-The OneShot and CGS prompts use generic or unrelated examples.
-
-\stitle{Model}.
-Every experiment in this paper uses one small open model: Llama~3.1
-8B~\cite{grattafiori2024llama3} with 4-bit quantization (Q4\_0), served
-locally by Ollama~\cite{ollama} at temperature 0.
-We chose it so that every result can be reproduced on a laptop, with no
-API cost, and so that differences between methods are not masked by a
-model that can answer from memory.
-The published Text2SPARQL entries use larger models, so our numbers are
-a lower bound for each method, not its ceiling.
-\hermes takes the model as a parameter, local or behind any
-OpenAI-compatible API, so the same runs extend to other open models
-such as Qwen2.5 and Qwen3~\cite{qwen2024qwen25,yang2025qwen3} and to API
+\stitle{Models}.
+We run every method with Qwen3~\cite{yang2025qwen3} at three sizes,
+4B, 8B, and 14B parameters, with thinking disabled and temperature 0.
+Each model is served in bf16 by vLLM~\cite{kwon2023vllm} on one NVIDIA
+L40S GPU, and each run sends 16 items at a time so that the server
+batches their requests.
+Replies are capped at 2,048 tokens.
+Small open models keep every run reproducible at low cost and keep
+differences between methods from being masked by a model that answers
+from memory; the published Text2SPARQL entries use larger models, so
+our numbers are a lower bound for each method.
+\hermes takes the model as a parameter, so the same runs extend to other
+open models such as Llama~3.1~\cite{grattafiori2024llama3} and to API
 models such as GPT-4~\cite{openai2023gpt4}.
-\warn{[Pending: results with further small and API models.]}
+\warn{[Pending: API models and Llama~3.1 8B.]}
 
 \stitle{Implementation}.
-All methods use this model, the same graph stores, and the same scorer.
-The planners have a step budget of $B = 15$.
-Experiments run on a single Apple-silicon laptop.
+All methods share the graph store (Oxigraph, in memory), the entity
+index, and the scorer.
+Every graph query is limited to 30\,s and every item to 300\,s; an item
+that exceeds its limit counts as unanswered.
+Runs record the source commit, and each table and figure in this
+section is generated from the committed run outputs.
 
 \subsection{RQ1: Effectiveness}
 
-Table~\ref{tab-main} reports the finished runs.
-On CK26, \hermes{}$^-$ reaches the highest $F_1$ (0.094) and recall
-(0.300), against 0.064 and 0.142 for CGS and 0.017 and 0.015 for
-OneShot.
-It answers 4 items exactly and 37 with non-zero $F_1$
-(Figure~\ref{fig-outcomes}).
-The ranking holds in both languages: $F_1$ is 0.098 (English) and
-0.091 (German) for \hermes{}$^-$, 0.048 and 0.081 for CGS, and 0.007
-and 0.027 for OneShot.
-Restricting to the 86 items whose gold reproduces changes no
-$F_{\mathrm{ndcg}}$ by more than 0.004.
-On DB26, where the DBpedia vocabulary is too large to show to the
-model, OneShot reaches 0.017, as on CK26.
-\warn{[Pending: CGS, \hermes{}$^-$, and \hermes on DB26.]}
+Table~\ref{tab-main} reports all twelve runs.
+\hermes is the most accurate method at 14B: $F_1$ 0.282, against 0.231
+for \hermes{}$^-$, 0.197 for CGS, and 0.089 for OneShot, with the highest
+precision (0.290), recall (0.414), and $F_{\mathrm{ndcg}}$.
+It answers 16 items exactly, as many as \hermes{}$^-$, against 11 for
+CGS and 4 for OneShot.
+The lead holds in both languages ($F_1$ 0.297 in English and 0.268 in
+German, against 0.274 and 0.187 for \hermes{}$^-$) and on the 86 items
+whose gold reproduces (0.297).
+Strict scoring changes no $F_1$ at any size, because no method answers
+an ASK question.
+
+\begin{table}[t]
+  \caption{Effectiveness on CK26 (100 items). Official metrics; Strict
+    is set $F_1$ under the corrected scorer, and Repro.\ is set $F_1$ on
+    the 86 items whose gold reproduces. Best per model in bold.}
+  \label{tab-main}
+  \footnotesize
+  \setlength{\tabcolsep}{3.2pt}
+  \input{tab-main}
+\end{table}
+
+Accuracy grows with model size for every method (Figure~\ref{fig-sizes}),
+but not at the same rate.
+From 4B to 14B, $F_1$ rises by 0.212 for \hermes, 0.128 for
+\hermes{}$^-$, 0.113 for CGS, and 0.089 for OneShot.
+At 4B, CGS is the most accurate method (0.084 $F_1$ against 0.070 for
+\hermes): the planners need a model that can follow a multi-step
+protocol, and the 4B model often does not (Section~\ref{sec-exp-rq2}).
+OneShot at 4B scores 0: on 79 items its query does not parse, most
+often because it omits the query form (\kw{SELECT}).
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\columnwidth]{fig/outcomes.pdf}
-  \caption{Outcome of each CK26 item (Llama~3.1 8B): no runnable query,
-    a query with $F_1 = 0$, a partial answer, or the exact answer.}
-  \label{fig-outcomes}
+  \includegraphics[width=\columnwidth]{fig/sizes.pdf}
+  \caption{Set $F_1$ on CK26 against Qwen3 model size. Dashed, hollow:
+    \hermes without the verifier.}
+  \label{fig-sizes}
 \end{figure}
 
-\begin{table}[t]
-  \caption{Effectiveness (official metrics; strict is set $F_1$ under
-    the corrected scorer). Model: Llama~3.1 8B. The gold-oracle row is
-    an ablation that uses gold answers.}
-  \label{tab-main}
-  \small
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{@{}llrrrrr@{}}
-    \toprule
-    & Method & P & R & $F_1$ & $F_{\mathrm{ndcg}}$ & Strict \\
-    \midrule
-    CK26 & OneShot & 0.036 & 0.015 & 0.017 & 0.018 & 0.017 \\
-         & CGS & 0.061 & 0.142 & 0.064 & 0.064 & 0.064 \\
-         & \cellcolor{hermesbg}\hermes{}$^-$ & \cellcolor{hermesbg}\textbf{0.101} & \cellcolor{hermesbg}\textbf{0.300} & \cellcolor{hermesbg}\textbf{0.094} & \cellcolor{hermesbg}\textbf{0.094} & \cellcolor{hermesbg}\textbf{0.094} \\
-         & \cellcolor{hermesbg}\hermes & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} & \cellcolor{hermesbg}\warn{--} \\
-         & CGS, gold oracle & 0.082 & 0.229 & 0.086 & 0.086 & 0.086 \\
-    \midrule
-    DB26 & OneShot & 0.038 & 0.011 & 0.017 & 0.017 & 0.017 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-For scale, Table~\ref{tab-peers} places our runs among the published
-2026 entries on CK26, which range from 0.157 to 0.832 in
+For scale, Table~\ref{tab-peers} places the 14B runs among the
+published 2026 entries on CK26, which range from 0.157 to 0.832 in
 $F_{\mathrm{ndcg}}$~\cite{smeros2026sparqlllm,text2sparql}.
 This is not a paired comparison: those systems were scored by the
 organizers on Tentris, and their models are not controlled here.
-Every method in Table~\ref{tab-main} uses an 8B local model and stays
-below the weakest entry.
+With a 14B open model, \hermes places above three of the eight
+entries.
 
 \begin{table}[t]
   \caption{CK26 $F_{\mathrm{ndcg}}$ of the published Text2SPARQL 2026
-    entries, scored by the organizers, and of our runs (shaded, 8B local
-    model).}
+    entries, scored by the organizers, and of our runs with Qwen3-14B
+    (shaded).}
   \label{tab-peers}
   \small
   \begin{tabular}{@{}lr@{\hspace{2em}}lr@{}}
     \toprule
     Entry & $F_{\mathrm{ndcg}}$ & Entry & $F_{\mathrm{ndcg}}$ \\
     \midrule
-    SPARQL-LLM~\cite{smeros2026sparqlllm} & \textbf{0.832} & IRIS & 0.217 \\
-    INFAI-ETI-A & 0.633 & LIBER-AI-QWEN & 0.206 \\
-    ADFR & 0.513 & INFAI-ETI-B & 0.157 \\
-    INFAI-ETI-C & 0.452 & \cellcolor{hermesbg}\hermes{}$^-$ & \cellcolor{hermesbg}0.094 \\
-    LIBER-AI-CLAUDE & 0.335 & \cellcolor{ours}CGS & \cellcolor{ours}0.064 \\
-    & & \cellcolor{ours}OneShot & \cellcolor{ours}0.018 \\
+    SPARQL-LLM~\cite{smeros2026sparqlllm} & \textbf{0.832} & \cellcolor{hermesbg}\hermes{}$^-$ & \cellcolor{hermesbg}0.231 \\
+    INFAI-ETI-A & 0.633 & IRIS & 0.217 \\
+    ADFR & 0.513 & LIBER-AI-QWEN & 0.206 \\
+    INFAI-ETI-C & 0.452 & \cellcolor{ours}CGS & \cellcolor{ours}0.197 \\
+    LIBER-AI-CLAUDE & 0.335 & INFAI-ETI-B & 0.157 \\
+    \cellcolor{hermesbg}\hermes & \cellcolor{hermesbg}0.282 & \cellcolor{ours}OneShot & \cellcolor{ours}0.090 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Table~\ref{tab-features} breaks CK26 down by the feature tags of the
-gold queries.
-Operator-level planning gains most on plain selections and filters.
-No method answers aggregation, slicing, or ASK questions: every $F_1$
-on \kw{COUNT}, \kw{GROUP}, and \kw{LIMIT} is at most 0.03, and all three
-score 0 on the six ASK items.
-These are exactly the questions whose answer shape (a number, a single
-value, a Boolean) a goal states before the query exists, which is what
-the verified planner is designed to enforce.
+Table~\ref{tab-features} breaks the 14B runs down by the feature tags
+of the gold queries.
+\hermes leads on plain selections, filters, and nested queries.
+\hermes{}$^-$ leads on ordering, grouping, counting, and slicing.
+No method answers any of the six ASK items.
 
 \begin{table}[t]
-  \caption{CK26 set $F_1$ by feature tag of the gold query; a question
-    can carry several tags, and $n$ counts items. Best per row in bold.}
+  \caption{CK26 set $F_1$ by feature tag of the gold query (Qwen3-14B);
+    a question can carry several tags, and $n$ counts items. Best per
+    row in bold.}
   \label{tab-features}
   \small
-  \begin{tabular}{@{}lrrr>{\columncolor{hermesbg}}r@{}}
-    \toprule
-    Tag & $n$ & OneShot & CGS & \hermes{}$^-$ \\
-    \midrule
-    \kw{SELECT} & 94 & 0.018 & 0.068 & \textbf{0.100} \\
-    \kw{FILTER} & 10 & 0.007 & \textbf{0.293} & 0.290 \\
-    \kw{ORDER} & 30 & 0.012 & \textbf{0.025} & 0.022 \\
-    \kw{SUBSELECT} & 8 & \zero & 0.011 & \textbf{0.022} \\
-    \kw{GROUP} & 18 & \zero & \textbf{0.019} & 0.012 \\
-    \kw{COUNT} & 16 & \zero & \textbf{0.016} & 0.013 \\
-    \kw{LIMIT} & 26 & \zero & \textbf{0.029} & 0.002 \\
-    \kw{ASK} & 6 & \zero & \zero & \zero \\
-    \bottomrule
-  \end{tabular}
+  \input{tab-features}
 \end{table}
 
 \subsection{RQ2: Components}
-
-\stitle{Reference answers}.
-CGS needs a reference answer set.
-The gold-oracle ablation replaces the LLM's reference answers with the
-gold answers and replays the same cached constraint tables, so it
-changes only the reference.
-$F_1$ rises from 0.064 to 0.086 and recall from 0.142 to 0.229.
-It stays below \hermes{}$^-$, which uses no reference answers, because
-41 items fail before the search starts: the model's constraint table
-matches nothing in the graph, and no reference can repair that.
+\label{sec-exp-rq2}
 
 \stitle{Verifier}.
-\warn{[Pending: \hermes against \hermes{}$^-$ at equal step budget;
-kernel rejections per item; effect of goal-gated \kw{finish}.]}
+Table~\ref{tab-verifier} compares \hermes with \hermes{}$^-$, which
+differ only in the verifier.
+The verifier sharply reduces the items that end with no runnable query
+at every size: from 57 to 35 at 4B, from 15 to 2 at 8B, and from 26 to
+9 at 14B.
+It rejects 37, 48, and 29 steps per run at 4B, 8B, and 14B, and each
+rejection names the violated rule (for example, a projected variable
+that no pattern binds), so the planner repairs the step instead of
+running it.
+Accuracy follows at 14B, where $F_1$ rises from 0.231 to 0.282.
+At 4B and 8B it does not: $F_1$ falls from 0.103 to 0.070 and from
+0.178 to 0.158.
+At 4B, \hermes returns a query on 30 items where \hermes{}$^-$ returned
+none, but only 10 of them score above zero, and it scores zero on 11
+items that \hermes{}$^-$ answered in part; at 8B the counts are 14, 6,
+and 16.
+The verifier turns failures into answers; whether the answers are
+right depends on the model.
+
+\begin{table}[t]
+  \caption{The verifier: \hermes against \hermes{}$^-$ on CK26. No
+    answer counts items that end without a runnable query; Steps is the
+    mean number of actions per item.}
+  \label{tab-verifier}
+  \footnotesize
+  \setlength{\tabcolsep}{3.5pt}
+  \input{tab-verifier}
+\end{table}
+
+\stitle{Reference answers}.
+CGS ranks candidates by their agreement with reference answers that the
+model predicts.
+\warn{[Pending: CGS with gold reference answers on Qwen3.]}
 
 \stitle{Feedback signals}.
 \warn{[Pending: ablation of the observation, removing in turn the
@@ -245,107 +244,91 @@ count, the change in count, the row sample, and the error message.]}
 
 \subsection{RQ3: Time and Cost}
 
-All runs execute on one laptop (Apple M2 Pro, 16\,GB) with the model
-served locally, so no run pays for API calls; cost is model calls,
-graph executions, and time.
-Table~\ref{tab-cost} reports them per run; Figure~\ref{fig-cost}(a)
+Table~\ref{tab-cost} reports the cost of every run; Figure~\ref{fig-cost}(a)
 sets accuracy against model calls, and Figure~\ref{fig-cost}(b) shows
 the time of every item.
+All twelve runs take 27.6 minutes of L40S time in total.
 
-\stitle{Model calls}.
-\hermes{}$^-$ ends with a runnable query on 96 of 100 items, against 59
-for CGS and 76 for OneShot, but it spends 1,451 model calls (14.5 per
-item, 13.9 steps on average) against 198 for CGS and 116 for OneShot.
+\stitle{Model calls and tokens}.
+The planners spend 12.7 to 14.6 model calls per item, against about 2
+for CGS and 1 to 2 for OneShot, and read about 28k input tokens per
+item, 7 times as many as CGS: every step resends the plan and its
+observations.
+Output is small for all methods (11k to 52k tokens per run), so input
+dominates the cost.
 The comparison in Table~\ref{tab-main} is therefore not at equal model
-budget, and does not by itself show that execution feedback beats
-generation with repair.
+budget.
 \warn{[Pending: budget-matched comparison, \eg CGS or OneShot with
 self-consistency at 15 calls per item.]}
 
 \stitle{Time}.
-OneShot answers 100 items in 6.2 minutes (3.0\,s median per item).
-CGS takes 35.6 minutes (15.1\,s median, 58.1\,s at the 95th
-percentile): its beam search runs 667 graph executions, and its slowest
-items are those with large constraint tables.
-\hermes{}$^-$ takes 40.4 minutes (24.4\,s median, 34.6\,s at the 95th
-percentile), and its time is the most predictable of the three: every
-item falls between about 6 and 50\,s (Figure~\ref{fig-cost}(b)),
-because the 15-step budget bounds each one.
-Graph executions stay cheap for the planner: memoization keeps it at
-422, below the 667 of CGS.
-The gold-oracle ablation shows the risk of search without a time
-bound: with every model call replayed from the cache, the median item
-takes under a second, yet the run takes 37.2 minutes, because one item
-spends 1,919\,s (86\% of the run) on 81 graph executions, among them a
-single very expensive candidate query.
-The local store has no query timeout; bounding each execution is a
-simple guard that both search and planning need.
-\warn{[Pending: input and output tokens and the split of time between
-the model and the graph store, which runs record from the corrected
-rerun onward.]}
+Because the server batches 16 items at a time, every run of 100 items
+finishes in 1.0 to 3.6 minutes.
+Per item, the planners are slower and more predictable: at 14B the
+median item takes 25.5\,s for \hermes and 21.7\,s for \hermes{}$^-$,
+against 9.9\,s for CGS and 3.1\,s for OneShot, and the 95th percentile
+is 32.7\,s for \hermes against 110.5\,s for CGS.
+The step budget bounds each planner item, while the time of CGS depends
+on the size of its search: at 14B it runs 2,132 graph executions,
+more than twice as many as \hermes (902).
 
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{fig/cost.pdf}
-  \caption{Cost on CK26 (Llama~3.1 8B, one laptop). (a) Set $F_1$
-    against model calls per item. (b) Seconds per item, one dot per
-    item, with the median as a bar; items replayed from the cache are
-    drawn at 0.05\,s. Hollow markers are ablations: CGS with gold
-    reference answers, and \hermes without the verifier.}
+  \caption{Cost on CK26 with Qwen3-14B. (a) Set $F_1$ against model
+    calls per item. (b) Seconds per item, one dot per item, with the
+    median as a bar. Hollow markers: \hermes without the verifier.}
   \label{fig-cost}
 \end{figure*}
 
 \begin{table}[t]
-  \caption{Time and cost per run on CK26 (100 items, Llama~3.1 8B on
-    one laptop). Wall is the whole run; p50 and p95 are seconds per
-    item. Errors are items with no query or a query that fails to run.}
+  \caption{Cost per run on CK26 (100 items). Calls are model calls;
+    In and Out are input and output tokens in thousands; Exec.\ counts
+    graph executions; Wall is the whole run in minutes; p50 and p95 are
+    seconds per item.}
   \label{tab-cost}
-  \small
-  \setlength{\tabcolsep}{3.5pt}
-  \begin{tabular}{@{}lrrrrrr@{}}
-    \toprule
-    Method & Calls & Exec. & Wall (min) & p50 & p95 & Errors \\
-    \midrule
-    OneShot & 116 & 136 & \textbf{6.2} & \textbf{3.0} & \textbf{8.5} & 24 \\
-    CGS & 198 & 667 & 35.6 & 15.1 & 58.1 & 41 \\
-    \quad gold oracle & (cached) & 4,051 & 37.2 & 0.0 & 0.8 & 41 \\
-    \rowcolor{hermesbg}\hermes{}$^-$ & 1,451 & 422 & 40.4 & 24.4 & 34.6 & \textbf{4} \\
-    \rowcolor{hermesbg}\hermes & \warn{--} & \warn{--} & \warn{--} & \warn{--} & \warn{--} & \warn{--} \\
-    \bottomrule
-  \end{tabular}
+  \footnotesize
+  \setlength{\tabcolsep}{2.8pt}
+  \input{tab-cost}
 \end{table}
 
 \subsection{Case Study}
 
-\warn{This item is the one the earlier prompt named; the trace will be
-replaced by one from the corrected rerun.}
-Table~\ref{tab-case} is the trace of \hermes{}$^-$ on the German
-version of Example~\ref{exa-motivation}.
-Two observations carry the answer.
-Joining \kw{?e\ pv{:}memberOf\ ?d} shows 53 employee--department pairs,
-so the agent knows the join is correct but unselective; the filter on
-the employee found by \kw{lookup} narrows it to one solution, which is
-the gold answer.
-The trace also shows the limits of an unverified planner: two of its
-eight actions are lookups that return nothing.
+Table~\ref{tab-case} is the trace of \hermes with Qwen3-14B on the
+German version of Example~\ref{exa-motivation}.
+The first action states the goal, one answer of type
+\kw{pv{:}Department}, before any query exists.
+The lookup returns two employees named Brant; the planner binds Karen
+Brant, and the join with \kw{pv{:}memberOf} yields one solution of the
+goal's type, the gold answer.
+The verifier matters on other items.
+On ``What's Baldwin Dirksen's phone number?'', \hermes{}$^-$ found the
+employee but then tried to project the property \kw{pv{:}phone} as if it
+were a variable, failed, and repeated the step until its budget ran
+out; \hermes stated a literal goal, joined
+\kw{pv{:}phone\ ?p}, and answered in four steps.
+On a German request for every supplier's name and address, the verifier
+rejected a projection of \kw{?addressText}, a variable whose pattern
+the planner had removed because it matched nothing; the planner
+projected the bound address fields instead and reached $F_1$ 0.84,
+where \hermes{}$^-$ scored 0.
 
 \begin{table}[t]
-  \caption{Trace of \hermes{}$^-$ on ``Zu welcher Abteilung gehört Frau
-    Brant?'' (CK26, item 1, German).}
+  \caption{Trace of \hermes (Qwen3-14B) on ``Zu welcher Abteilung
+    gehört Frau Brant?'' (CK26, item 1, German).}
   \label{tab-case}
   \small
-  \begin{tabular}{@{}lp{0.48\columnwidth}@{}}
+  \begin{tabular}{@{}lp{0.46\columnwidth}@{}}
     \toprule
     Action & Observation \\
     \midrule
-    \kw{lookup} ``Frau Brant'' & 2 entities, first: employee Karen Brant \\
-    \kw{lookup} ``Abteilung'' & no entity \\
-    \kw{inspect} \kw{pv{:}Department} & 13 predicates \\
-    \kw{triple} \kw{?e\ pv{:}memberOf\ ?d} & 53 solutions \\
-    \kw{project} \kw{?d} & 53 solutions \\
-    \kw{lookup} ``Zu welcher Abteilung'' & no entity \\
-    \kw{filter} \kw{?e} $=$ Karen Brant & 53 $\to$ 1 solution \\
-    \kw{finish} & --- \\
+    \kw{goal} \kw{?d} : \kw{pv{:}Department} & one answer \\
+    \kw{lookup} ``Frau Brant'' & 2 entities: Karen, Sylvester Brant \\
+    \kw{lookup} ``Karen Brant'' & 1 entity \\
+    \kw{triple} \kw{?e\ pv{:}name}\ ``Karen Brant'' & 1 solution \\
+    \kw{triple} \kw{?e\ pv{:}memberOf\ ?d} & 1 solution \\
+    \kw{project} \kw{?d} & 1 solution \\
+    \kw{finish} & accepted \\
     \bottomrule
   \end{tabular}
 \end{table}

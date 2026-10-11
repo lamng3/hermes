@@ -39,20 +39,19 @@ with aggregation and ordering deferred.
 Consider the question ``Which department does Ms.~Brant belong to?''
 over the Text2SPARQL corporate graph~\cite{text2sparql}, asked in
 German.
-A one-shot generator with an 8B model wrote a query over
-\kw{foaf{:}Person} and \kw{foaf{:}name}~``Brant'', terms the graph does
-not use, so the query ran and returned nothing.
+With Qwen3-14B~\cite{yang2025qwen3}, a one-shot generator wrote a query
+over \kw{ecc{:}Employee} and \kw{foaf{:}name}~``Frau Brant'', terms the
+graph does not use, so the query ran and returned nothing.
 Constraint-guided search kept only the constraint
-\kw{?d\ a\ pv{:}Department} and returned every department.
+\kw{?e\ pv{:}memberOf\ ?d} and returned all six departments that have members.
 Planning one operator at a time, the agent of
-Section~\ref{sec-framework} looked up ``Frau Brant'' and found the
-employee Karen Brant, joined \kw{?e\ pv{:}memberOf\ ?d} and saw 53 solutions, then
-filtered on the employee and saw the count fall from 53 to 1: the
-correct department.
+Section~\ref{sec-framework} first stated the goal: one answer of type
+\kw{pv{:}Department}.
+Looking up ``Frau Brant'' returned two employees, Karen and Sylvester
+Brant; the agent bound Karen Brant, joined \kw{?e\ pv{:}memberOf\ ?d},
+and saw one solution of the stated type: the correct department.
 Each step was a single algebra operator, and each observation told the
 agent what that operator did to the answer.
-\warn{[To be replaced with the trace from the corrected rerun; see
-Section~\ref{sec-exp}.]}
 \end{example}
 
 Database systems have handled a similar problem for decades.
@@ -86,10 +85,10 @@ formalization of the SPARQL algebra.
 \item \textbf{A reproducible evaluation} (Section~\ref{sec-exp}).
   We normalize six benchmarks and implement a scorer that reproduces
   all 5,024 published Text2SPARQL 2026 scores.
-  With a small open model (Llama~3.1 8B, run locally) on the corporate
-  benchmark, operator-level
-  planning outperforms one-shot generation and constraint-guided search
-  in $F_1$ and recall, and almost always ends with a runnable query.
+  With Qwen3 models of 4B to 14B parameters on the corporate benchmark,
+  \hermes is the most accurate method at 14B, its accuracy grows
+  fastest with model size, and the verifier cuts the items without a
+  runnable query at every size.
 \end{enumerate}
 The code, data, configurations, and run outputs are available at the
 artifact URL above.

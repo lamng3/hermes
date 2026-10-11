@@ -56,10 +56,15 @@ def style():
     })
 
 
-def latest_runs(results, benchmark):
+SIZES = [("qwen3-4b", 4), ("qwen3-8b", 8), ("qwen3-14b", 14)]
+
+
+def latest_runs(results, benchmark, model=None):
+    """Latest finished run per method; with a model, the system@model runs."""
     runs = {}
     for config in METHODS:
-        finished = sorted(Path(results, benchmark, config).glob("*/metrics.json"))
+        folder_name = f"{config}@{model}" if model else config
+        finished = sorted(Path(results, benchmark, folder_name).glob("*/metrics.json"))
         if finished:
             folder = finished[-1].parent
             runs[config] = {
@@ -137,7 +142,8 @@ def cost(runs, out):
                       xytext=offset, fontsize=6.5, color=INK)
     left.set_xscale("log")
     left.set_xlim(0.8, 40)
-    left.set_ylim(0, 0.12)
+    top = max(d["metrics"]["official"]["average"]["set_F"] for d in runs.values())
+    left.set_ylim(0, max(0.12, 1.2 * top))
     left.set_xticks([1, 2, 5, 10, 20], ["1", "2", "5", "10", "20"])
     left.minorticks_off()
     left.set_xlabel("model calls per item (log scale)")
@@ -170,10 +176,14 @@ def cost(runs, out):
     right.set_yticks(range(len(order)), [METHODS[c][0] for c in order])
     right.invert_yaxis()
     right.set_xscale("log")
-    right.set_xlim(floor * 0.8, 4000)
-    right.set_xticks([0.1, 1, 10, 100, 1000], ["0.1", "1", "10", "100", "1000"])
+    slowest_item = max(r["seconds"] for d in runs.values() for r in d["rows"])
+    right.set_xlim(floor * 0.8, max(400, 1.5 * slowest_item))
+    ticks = [t for t in (0.1, 1, 10, 100, 1000) if t <= 1.5 * max(400, slowest_item)]
+    right.set_xticks(ticks, [f"{t:g}" for t in ticks])
     right.minorticks_off()
-    right.set_xlabel("seconds per item (log scale; cached replays at 0.05)")
+    cached = any(r["seconds"] < floor for d in runs.values() for r in d["rows"])
+    right.set_xlabel("seconds per item (log scale"
+                     + ("; cached replays at 0.05)" if cached else ")"))
     right.set_title("(b) time per item", loc="left")
     clean(right)
     fig.tight_layout(w_pad=2.0)
@@ -181,17 +191,48 @@ def cost(runs, out):
     plt.close(fig)
 
 
+def sizes(results, out):
+    """Set F1 against model size, one line per method (Qwen3 4B, 8B, 14B)."""
+    fig, ax = plt.subplots(figsize=(COLUMN, 1.85))
+    for config in ("training-free", "uniqgen", "algebra-agent", "prover"):
+        label, color, ablation = METHODS[config]
+        points = []
+        for model, billions in SIZES:
+            run = latest_runs(results, "ck26", model).get(config)
+            if run:
+                points.append((billions, run["metrics"]["official"]["average"]["set_F"]))
+        if not points:
+            continue
+        xs, ys = zip(*points)
+        ax.plot(xs, ys, color=color, linewidth=2, linestyle="--" if ablation else "-", zorder=2)
+        ax.scatter(xs, ys, s=30, color="white" if ablation else color, edgecolor=color,
+                   linewidth=1.5, zorder=3)
+        ax.annotate(f"{label} {ys[-1]:.3f}", (xs[-1], ys[-1]), textcoords="offset points",
+                    xytext=(5, 0), va="center", fontsize=6.5, color=INK)
+    ax.set_xticks([b for _m, b in SIZES], [f"{b}B" for _m, b in SIZES])
+    ax.set_xlim(3, 21)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel("Qwen3 model size")
+    ax.set_ylabel("set $F_1$ (CK26)")
+    clean(ax, "y")
+    fig.savefig(out / "sizes.pdf")
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", default="results")
     parser.add_argument("--out", default="paper/fig")
+    parser.add_argument("--model", default="qwen3-14b",
+                        help="Model whose runs the outcome and cost figures show.")
     args = parser.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     style()
-    runs = latest_runs(args.results, "ck26")
+    runs = latest_runs(args.results, "ck26", args.model)
     outcomes(runs, out)
     cost(runs, out)
+    sizes(args.results, out)
     print(f"wrote {sorted(p.name for p in out.glob('*.pdf'))} from runs: {sorted(runs)}")
 
 
