@@ -14,6 +14,7 @@ if [ ${#CONFIGS[@]} -eq 0 ]; then
     configs/db26/training-free.yaml
     configs/ck26/algebra-agent.yaml
     configs/db26/algebra-agent.yaml
+    configs/ck26/prover.yaml
   )
 fi
 for config in "${CONFIGS[@]}"; do
