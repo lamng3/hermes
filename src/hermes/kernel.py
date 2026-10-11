@@ -163,18 +163,23 @@ class Kernel:
     def check(self, plan, goal=None):
         judgment = Judgment()
         context = judgment.context
-        patterns = list(plan.triples)
-        for group in plan.optionals + plan.minus:
-            patterns.extend(group)
+        binding = list(plan.triples)
+        for group in plan.optionals:
+            binding.extend(group)
         for branches in plan.unions:
             for branch in branches:
-                patterns.extend(branch)
-        for pattern in patterns:
+                binding.extend(branch)
+        excluded = [pattern for group in plan.minus for pattern in group]
+        for pattern in binding + excluded:
             for subject, predicate, value in self.triples(pattern, judgment):
                 self._type_triple(subject, predicate, value, judgment)
-        in_scope = set(context)
-        for pattern in patterns:
+        # MINUS checks its patterns but binds none of their variables.
+        in_scope = set()
+        for pattern in binding:
             in_scope |= set(_VARIABLE.findall(pattern))
+        for variable in list(context):
+            if variable not in in_scope:
+                del context[variable]
         for variable in in_scope:
             context.setdefault(variable, set())
         for expr, variable in plan.binds:
@@ -236,7 +241,7 @@ class Kernel:
                 wanted = self.expand(goal.type)
                 if not any(self.schema.subsumes(wanted, t) for t in types):
                     goals.append(f"⊢ {variable} : {goal.type} (state it with a type triple)")
-        extra = [v for v in projected if v not in goal.answer and v in plan.projection]
+        extra = [v for v in projected if v not in goal.answer]
         if extra:
             goals.append(f"⊢ project only the answer; drop {', '.join(extra)}")
         return goals

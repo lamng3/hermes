@@ -1,0 +1,74 @@
+\section{The Hermes Planner}
+\label{sec-framework}
+
+\hermes has four components: an entity linker, an explorer that applies
+actions and observes their effect, a verifier that decides validity and
+goal satisfaction, and a planner that chooses actions.
+Algorithm~\ref{alg-plan} in Appendix~B gives the loop.
+
+\stitle{Actions}.
+The action space is the algebra of Table~\ref{tab-ops}, plus three
+kinds of auxiliary actions.
+\emph{Graph reads} leave the plan unchanged: \kw{lookup} returns
+entities whose label contains a string, and \kw{inspect} lists the
+predicates around an entity or used by the instances of a class, with
+counts and an example value.
+\emph{Control} actions are \kw{goal}, which states $\sigma$;
+\kw{undo}, which restores the previous plan; and \kw{finish}.
+Each action is a JSON object, so a planner emits one action per turn
+and the explorer parses it into a typed command.
+
+\stitle{Observations}.
+After a plan-changing action, the explorer renders the new plan, checks
+that it parses, asks the verifier for validity, and only then executes
+two queries on the graph store: the number of solutions, as a
+\kw{COUNT} over the plan used as a subquery, and a sample of rows under
+a \kw{LIMIT} (five by default).
+The observation reports the count, the previous count when it changed,
+the sample, and any error.
+An action whose plan does not parse, is not valid, or fails to run is
+not committed.
+\kw{preview} returns the same observation without committing, the
+analogue of costing a rewrite before choosing it.
+Executions are memoized, so revisiting a plan costs nothing.
+
+\stitle{Verifier}.
+The verifier computes $\Gamma_\pi$ from the schema, checks the
+conditions of Section~\ref{sec-problem}, and returns errors, warnings,
+the typing context, and the conditions of $\sigma$ that $\pi$ does not
+yet satisfy (the \emph{open goals}).
+Error messages name the offending term and, for an unknown class or
+property, suggest the closest term in the schema.
+Algorithm~\ref{alg-verify} in Appendix~B gives the procedure.
+
+\stitle{Planner}.
+The planner is an LLM prompted, at every turn, with the action
+catalogue, the schema vocabulary, the entities whose labels occur in
+the question, the history of actions and observations, and the current
+plan as SPARQL.
+With the verifier enabled, the prompt also shows the typing context and
+the open goals, and \kw{finish} is refused while an error or an open
+goal remains.
+An action identical to the previous one is not executed.
+The loop ends on \kw{finish} or after a step budget (15), and returns
+the last committed plan that runs.
+
+\stitle{Other policies in the same space}.
+Existing generators are policies over these actions.
+One-shot generation is a single macro action that sets every field of
+the plan at once.
+Constraint-guided search~\cite{wang2026uniqgen} is a beam search over
+\kw{remove} and \kw{triple}: a Chase phase removes constraints until the
+plan covers a reference answer set, and a Backchase phase adds them
+back until it returns only reference answers~\cite{deutsch1999chase}.
+Placing them in one space lets the evaluation hold the graph store,
+the scorer, and the model fixed while varying only the policy.
+
+\stitle{Implementation}.
+\hermes is written in Python.
+Graph stores share one interface that returns SPARQL 1.1 JSON results,
+so the same planner runs on local RDF files loaded into
+Oxigraph~\cite{oxigraph} or rdflib, or on a remote SPARQL endpoint.
+Model completions are cached on disk, so a rerun replays the same
+outputs, and each run records the model, the number of model calls and
+graph executions, and the commit it started from.

@@ -109,3 +109,15 @@ def test_prover_refuses_to_finish_with_open_goals(olympics):
     assert result["trace"][-1]["observation"] == "finished"
     assert "⊢ ?city : ex:City" in llm.prompts[1]
     assert "open goals:\n  goals accomplished" in llm.prompts[-1]
+
+
+def test_minus_binds_no_variables(kernel):
+    found = errors(kernel, triple("?c ex:hosted ?g"), {"op": "minus", "patterns": ["?g ex:year ?y"]},
+                   {"op": "filter", "expr": "?y > 1900"})
+    assert found == ["unbound variable ?y in FILTER"]
+
+
+def test_select_star_projects_extra_variables(kernel):
+    goal = Goal(answer=("?c",), kind="entity")
+    open_goals = kernel.check(plan(triple("?c ex:hosted ?g")), goal).goals
+    assert open_goals == ["⊢ project only the answer; drop ?g"]

@@ -1,0 +1,94 @@
+\section{Introduction}
+\label{sec-intro}
+
+Knowledge graphs such as DBpedia~\cite{auer2007dbpedia} and enterprise
+graphs hold facts that users want to query in their own words.
+Natural language interfaces translate a question into a structured
+query that the graph can execute.
+For relational data this has a long history, from interactive
+interfaces that map parse trees onto SQL~\cite{li2014nalir} to recent
+LLM-based systems~\cite{gao2024dailsql,li2024codes,ren2024purple,li2024dawn}.
+For RDF, question answering has been cast as subgraph matching over the
+graph~\cite{zou2014natural} and as template decomposition of the
+question~\cite{zheng2018question}, and LLMs now generate SPARQL
+directly~\cite{smeros2026sparqlllm,wang2026uniqgen,brei2025aruqula}.
+
+Existing approaches leave three problems open.
+\textbf{C1. Whole-query generation.}
+Most LLM-based generators emit a complete query string.
+A query that fails to parse, joins values of incompatible types, or
+returns nothing is detected only after it is complete, and the repair
+is another sample from the same model.
+\textbf{C2. No static guarantees.}
+A query can parse and still be wrong in ways that the schema already
+rules out: a literal where the property expects an entity, a filter on
+a variable that nothing binds, or a projected variable that is neither
+grouped nor aggregated.
+Such queries run and quietly return nothing, or an error, and the
+generator learns little from either.
+\textbf{C3. Search needs a reference.}
+Constraint-guided search~\cite{wang2026uniqgen} refines a query by
+adding and removing constraints with Chase and
+Backchase~\cite{deutsch1999chase}, which gives soundness and
+completeness guarantees, but relative to a reference answer set that
+must be supplied or guessed, and over monotone conjunctive constraints,
+with aggregation and ordering deferred.
+
+\begin{example}
+\label{exa-motivation}
+Consider the question ``Which department does Ms.~Brant belong to?''
+over the Text2SPARQL corporate graph~\cite{text2sparql}, asked in
+German.
+A one-shot generator with an 8B model wrote a query over
+\kw{foaf{:}Person} and \kw{foaf{:}name}~``Brant'', terms the graph does
+not use, so the query ran and returned nothing.
+Constraint-guided search kept only the constraint
+\kw{?d\ a\ pv{:}Department} and returned every department.
+Planning one operator at a time, the agent of
+Section~\ref{sec-framework} looked up ``Frau Brant'' and found the
+employee Karen Brant, joined \kw{?e\ pv{:}memberOf\ ?d} and saw 53 solutions, then
+filtered on the employee and saw the count fall from 53 to 1: the
+correct department.
+Each step was a single algebra operator, and each observation told the
+agent what that operator did to the answer.
+\warn{[To be replaced with the trace from the corrected rerun; see
+Section~\ref{sec-exp}.]}
+\end{example}
+
+Database systems have handled a similar problem for decades.
+A query optimizer does not guess a whole execution plan; it applies one
+algebraic rewrite at a time and estimates its effect before keeping
+it~\cite{selinger1979access}, and the quality of those estimates
+largely decides the quality of the plan~\cite{leis2015good}.
+The SPARQL algebra has a compositional semantics~\cite{perez2009semantics,sparql11},
+so a query can be built and checked the same way.
+This paper takes that view of natural language to SPARQL.
+
+\stitle{Contributions}.
+This paper introduces \hermes, a query-planning agent over a typed
+formalization of the SPARQL algebra.
+\begin{enumerate}
+\item \textbf{A typed SPARQL algebra} (Section~\ref{sec-problem}).
+  We treat query plans as terms of the SPARQL algebra and derive a
+  typing context for their variables from the RDF
+  schema~\cite{rdfs11}.
+  Well-formedness and typing rules decide, without evaluating a plan,
+  whether it is valid.
+\item \textbf{Verified query planning} (Section~\ref{sec-problem}).
+  We formulate natural language to SPARQL as planning: actions are
+  algebra operators, observations report each operator's effect on the
+  graph, and a plan is accepted only when it is well typed and
+  satisfies a goal derived from the question.
+\item \textbf{The \hermes system} (Section~\ref{sec-framework}).
+  A verifier rejects ill-typed steps before they reach the graph store,
+  and an LLM planner drives it.
+  Existing generators are policies over the same action space.
+\item \textbf{A reproducible evaluation} (Section~\ref{sec-exp}).
+  We normalize six benchmarks and implement a scorer that reproduces
+  all 5,024 published Text2SPARQL 2026 scores.
+  On the corporate benchmark with an 8B open model, operator-level
+  planning outperforms one-shot generation and constraint-guided search
+  in $F_1$ and recall, and almost always ends with a runnable query.
+\end{enumerate}
+The code, data, configurations, and run outputs are available at the
+artifact URL above.

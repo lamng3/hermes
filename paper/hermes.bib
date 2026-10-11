@@ -1,3 +1,8 @@
+% Every entry was checked against its publisher (Crossref, ACM DL, VLDB,
+% Springer, IEEE, CEUR) or the specification it cites.
+
+% Standards and semantics
+
 @misc{sparql11,
   author       = {{W3C SPARQL Working Group}},
   title        = {{SPARQL} 1.1 Query Language},
@@ -14,36 +19,168 @@
   url          = {https://www.w3.org/TR/rdf-schema/}
 }
 
+@article{perez2009semantics,
+  author  = {P{\'e}rez, Jorge and Arenas, Marcelo and Gutierrez, Claudio},
+  title   = {Semantics and Complexity of {SPARQL}},
+  journal = {ACM Transactions on Database Systems},
+  volume  = {34},
+  number  = {3},
+  pages   = {16:1--16:45},
+  year    = {2009},
+  doi     = {10.1145/1567274.1567278}
+}
+
+% Query optimization and reformulation
+
+@inproceedings{selinger1979access,
+  author    = {Selinger, Patricia G. and Astrahan, Morton M. and Chamberlin, Donald D. and Lorie, Raymond A. and Price, Thomas G.},
+  title     = {Access Path Selection in a Relational Database Management System},
+  booktitle = {Proceedings of the 1979 ACM SIGMOD International Conference on Management of Data},
+  year      = {1979},
+  pages     = {23--34},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/582095.582099}
+}
+
+@article{leis2015good,
+  author  = {Leis, Viktor and Gubichev, Andrey and Mirchev, Atanas and Boncz, Peter and Kemper, Alfons and Neumann, Thomas},
+  title   = {How Good Are Query Optimizers, Really?},
+  journal = {Proceedings of the VLDB Endowment},
+  volume  = {9},
+  number  = {3},
+  pages   = {204--215},
+  year    = {2015},
+  doi     = {10.14778/2850583.2850594}
+}
+
 @inproceedings{deutsch1999chase,
   author    = {Deutsch, Alin and Popa, Lucian and Tannen, Val},
   title     = {Physical Data Independence, Constraints, and Optimization with Universal Plans},
-  booktitle = {Proceedings of the 25th International Conference on Very Large Data Bases},
-  series    = {VLDB},
+  booktitle = {Proceedings of the 25th International Conference on Very Large Data Bases (VLDB)},
   year      = {1999},
   pages     = {459--470},
   publisher = {Morgan Kaufmann},
   address   = {San Francisco, CA, USA}
 }
 
-@inproceedings{demoura2021lean,
-  author    = {de Moura, Leonardo and Ullrich, Sebastian},
-  title     = {The {Lean} 4 Theorem Prover and Programming Language},
-  booktitle = {Automated Deduction --- {CADE} 28},
-  series    = {LNCS},
-  volume    = {12699},
-  year      = {2021},
-  pages     = {625--635},
-  publisher = {Springer},
-  address   = {Cham}
+% Natural language interfaces and question answering over graphs
+
+@article{li2014nalir,
+  author  = {Li, Fei and Jagadish, H. V.},
+  title   = {Constructing an Interactive Natural Language Interface for Relational Databases},
+  journal = {Proceedings of the VLDB Endowment},
+  volume  = {8},
+  number  = {1},
+  pages   = {73--84},
+  year    = {2014},
+  doi     = {10.14778/2735461.2735468}
 }
 
-@misc{liu2024texttosql,
-  author       = {Liu, Xinyu and Shen, Shuyu and Li, Boyan and Ma, Peixian and Jiang, Runzhi and Zhang, Yuxin and Fan, Ju and Li, Guoliang and Tang, Nan and Luo, Yuyu},
-  title        = {A Survey of Text-to-{SQL} in the Era of {LLMs}: Where Are We, and Where Are We Going?},
-  year         = {2024},
-  howpublished = {arXiv:2408.05109},
-  url          = {https://arxiv.org/abs/2408.05109}
+@inproceedings{zou2014natural,
+  author    = {Zou, Lei and Huang, Ruizhe and Wang, Haixun and Yu, Jeffrey Xu and He, Wenqiang and Zhao, Dongyan},
+  title     = {Natural Language Question Answering over {RDF}: A Graph Data Driven Approach},
+  booktitle = {Proceedings of the 2014 ACM SIGMOD International Conference on Management of Data},
+  year      = {2014},
+  pages     = {313--324},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/2588555.2610525}
 }
+
+@article{zheng2018question,
+  author  = {Zheng, Weiguo and Yu, Jeffrey Xu and Zou, Lei and Cheng, Hong},
+  title   = {Question Answering over Knowledge Graphs: Question Understanding via Template Decomposition},
+  journal = {Proceedings of the VLDB Endowment},
+  volume  = {11},
+  number  = {11},
+  pages   = {1373--1386},
+  year    = {2018},
+  doi     = {10.14778/3236187.3236192}
+}
+
+@inproceedings{le2024graphlingo,
+  author    = {Le, Duy and Zhao, Kris and Wang, Mengying and Wu, Yinghui},
+  title     = {{GraphLingo}: Domain Knowledge Exploration by Synchronizing Knowledge Graphs and Large Language Models},
+  booktitle = {2024 IEEE 40th International Conference on Data Engineering (ICDE)},
+  year      = {2024},
+  pages     = {5477--5480},
+  publisher = {IEEE},
+  address   = {Piscataway, NJ, USA},
+  doi       = {10.1109/ICDE60146.2024.00432}
+}
+
+@inproceedings{auer2007dbpedia,
+  author    = {Auer, S{\"o}ren and Bizer, Christian and Kobilarov, Georgi and Lehmann, Jens and Cyganiak, Richard and Ives, Zachary},
+  title     = {{DBpedia}: A Nucleus for a Web of Open Data},
+  booktitle = {The Semantic Web, 6th International Semantic Web Conference (ISWC)},
+  series    = {Lecture Notes in Computer Science},
+  year      = {2007},
+  pages     = {722--735},
+  publisher = {Springer},
+  address   = {Berlin, Heidelberg},
+  doi       = {10.1007/978-3-540-76298-0_52}
+}
+
+@inproceedings{nguyen2025kroma,
+  author    = {Nguyen, Lam and Barcelos, Erika and French, Roger and Wu, Yinghui},
+  title     = {{KROMA}: Ontology Matching with Knowledge Retrieval and Large Language Models},
+  booktitle = {The Semantic Web -- ISWC 2025},
+  series    = {Lecture Notes in Computer Science},
+  year      = {2025},
+  pages     = {629--649},
+  publisher = {Springer},
+  address   = {Cham},
+  doi       = {10.1007/978-3-032-09527-5_34}
+}
+
+% LLM-based text-to-SQL
+
+@article{gao2024dailsql,
+  author  = {Gao, Dawei and Wang, Haibin and Li, Yaliang and Sun, Xiuyu and Qian, Yichen and Ding, Bolin and Zhou, Jingren},
+  title   = {Text-to-{SQL} Empowered by Large Language Models: A Benchmark Evaluation},
+  journal = {Proceedings of the VLDB Endowment},
+  volume  = {17},
+  number  = {5},
+  pages   = {1132--1145},
+  year    = {2024},
+  doi     = {10.14778/3641204.3641221}
+}
+
+@article{li2024dawn,
+  author  = {Li, Boyan and Luo, Yuyu and Chai, Chengliang and Li, Guoliang and Tang, Nan},
+  title   = {The Dawn of Natural Language to {SQL}: Are We Fully Ready?},
+  journal = {Proceedings of the VLDB Endowment},
+  volume  = {17},
+  number  = {11},
+  pages   = {3318--3331},
+  year    = {2024},
+  doi     = {10.14778/3681954.3682003}
+}
+
+@article{li2024codes,
+  author  = {Li, Haoyang and Zhang, Jing and Liu, Hanbing and Fan, Ju and Zhang, Xiaokang and Zhu, Jun and Wei, Renjie and Pan, Hongyan and Li, Cuiping and Chen, Hong},
+  title   = {{CodeS}: Towards Building Open-source Language Models for Text-to-{SQL}},
+  journal = {Proceedings of the ACM on Management of Data (SIGMOD)},
+  volume  = {2},
+  number  = {3},
+  pages   = {1--28},
+  year    = {2024},
+  doi     = {10.1145/3654930}
+}
+
+@inproceedings{ren2024purple,
+  author    = {Ren, Tonghui and Fan, Yuankai and He, Zhenying and Huang, Ren and Dai, Jiaqi and Huang, Can and Jing, Yinan and Zhang, Kai and Yang, Yifan and Wang, X. Sean},
+  title     = {{PURPLE}: Making a Large Language Model a Better {SQL} Writer},
+  booktitle = {2024 IEEE 40th International Conference on Data Engineering (ICDE)},
+  year      = {2024},
+  pages     = {15--28},
+  publisher = {IEEE},
+  address   = {Piscataway, NJ, USA},
+  doi       = {10.1109/ICDE60146.2024.00009}
+}
+
+% LLM-based text-to-SPARQL and graph query generation
 
 @misc{wang2026uniqgen,
   author       = {Wang, Mengying and Jedema, Nicolaas and Pandey, Rahul and Krishnan, RaviKiran and Lehmann, Jens and Wu, Yinghui},
@@ -51,6 +188,40 @@
   year         = {2026},
   howpublished = {arXiv:2605.00845},
   url          = {https://arxiv.org/abs/2605.00845}
+}
+
+@article{smeros2026sparqlllm,
+  author  = {Smeros, Panayiotis and Emonet, Vincent and Wang, Ruijie and Sima, Ana-Claudia and Mendes de Farias, Tarcisio},
+  title   = {{SPARQL-LLM}: Real-Time {SPARQL} Query Generation from Natural Language Questions},
+  journal = {ACM Transactions on the Web},
+  year    = {2026},
+  doi     = {10.1145/3847195}
+}
+
+@inproceedings{brei2025aruqula,
+  author    = {Brei, Felix and B{\"u}hmann, Lorenz and Frey, Johannes and Gerber, Daniel and Meyer, Lars-Peter and Stadler, Claus and Bulert, Kirill},
+  title     = {{ARUQULA} -- An {LLM} based {Text2SPARQL} Approach using {ReAct} and Knowledge Graph Exploration Utilities},
+  booktitle = {Proceedings of the First International {TEXT2SPARQL} Challenge 2025, co-located with {Text2KG} at {ESWC} 2025},
+  series    = {CEUR Workshop Proceedings},
+  volume    = {4094},
+  pages     = {49--63},
+  year      = {2025},
+  publisher = {CEUR-WS.org},
+  address   = {Aachen, Germany},
+  url       = {https://ceur-ws.org/Vol-4094/}
+}
+
+% Benchmarks
+
+@proceedings{text2sparql2025,
+  editor    = {Tramp, Sebastian and G{\^o}lo, Marcos and Marx, Edgard and do Carmo, Paulo Viviurka},
+  title     = {Proceedings of the First International {TEXT2SPARQL} Challenge 2025, co-located with {Text2KG} at {ESWC} 2025},
+  series    = {CEUR Workshop Proceedings},
+  volume    = {4094},
+  year      = {2025},
+  publisher = {CEUR-WS.org},
+  address   = {Aachen, Germany},
+  url       = {https://ceur-ws.org/Vol-4094/}
 }
 
 @misc{text2sparql,
@@ -61,13 +232,27 @@
   url          = {https://github.com/AKSW/text2sparql.aksw.org}
 }
 
-@proceedings{text2sparql2025,
-  editor    = {Tramp, Sebastian and G{\^o}lo, Marcos and Marx, Edgard and do Carmo, Paulo Viviurka},
-  title     = {Proceedings of the First International {TEXT2SPARQL} Challenge 2025, co-located with {Text2KG} at {ESWC} 2025},
-  series    = {CEUR Workshop Proceedings},
-  volume    = {4094},
-  year      = {2025},
-  url       = {https://ceur-ws.org/Vol-4094/}
+@inproceedings{dubey2019lcquad,
+  author    = {Dubey, Mohnish and Banerjee, Debayan and Abdelkawi, Abdelrahman and Lehmann, Jens},
+  title     = {{LC-QuAD} 2.0: A Large Dataset for Complex Question Answering over {Wikidata} and {DBpedia}},
+  booktitle = {The Semantic Web -- ISWC 2019},
+  series    = {Lecture Notes in Computer Science},
+  year      = {2019},
+  pages     = {69--78},
+  publisher = {Springer},
+  address   = {Cham},
+  doi       = {10.1007/978-3-030-30796-7_5}
+}
+
+@inproceedings{qald9plus,
+  author    = {Perevalov, Aleksandr and Diefenbach, Dennis and Usbeck, Ricardo and Both, Andreas},
+  title     = {{QALD}-9-plus: A Multilingual Dataset for Question Answering over {DBpedia} and {Wikidata} Translated by Native Speakers},
+  booktitle = {2022 IEEE 16th International Conference on Semantic Computing (ICSC)},
+  year      = {2022},
+  pages     = {229--234},
+  publisher = {IEEE},
+  address   = {Piscataway, NJ, USA},
+  doi       = {10.1109/ICSC52841.2022.00045}
 }
 
 @misc{qald10,
@@ -78,16 +263,7 @@
   url          = {https://www.semantic-web-journal.net/node/3357}
 }
 
-@inproceedings{qald9plus,
-  author    = {Perevalov, Aleksandr and Diefenbach, Dennis and Usbeck, Ricardo and Both, Andreas},
-  title     = {{QALD}-9-plus: A Multilingual Dataset for Question Answering over {DBpedia} and {Wikidata} Translated by Native Speakers},
-  booktitle = {2022 IEEE 16th International Conference on Semantic Computing (ICSC)},
-  year      = {2022},
-  pages     = {229--234},
-  doi       = {10.1109/ICSC52841.2022.00045},
-  publisher = {IEEE},
-  address   = {Piscataway, NJ, USA}
-}
+% Software
 
 @misc{treceval,
   author       = {{National Institute of Standards and Technology}},
@@ -103,115 +279,4 @@
   year         = {2026},
   howpublished = {{RDF} graph database},
   url          = {https://github.com/oxigraph/oxigraph}
-}
-
-@inproceedings{selinger1979access,
-  author    = {Selinger, Patricia G. and Astrahan, Morton M. and Chamberlin, Donald D. and Lorie, Raymond A. and Price, Thomas G.},
-  title     = {Access Path Selection in a Relational Database Management System},
-  booktitle = {Proceedings of the 1979 ACM SIGMOD International Conference on Management of Data},
-  year      = {1979},
-  pages     = {23--34},
-  doi       = {10.1145/582095.582099},
-  publisher = {ACM},
-  address   = {New York, NY, USA}
-}
-
-@article{perez2009semantics,
-  author  = {P{\'e}rez, Jorge and Arenas, Marcelo and Gutierrez, Claudio},
-  title   = {Semantics and Complexity of {SPARQL}},
-  journal = {ACM Transactions on Database Systems},
-  volume  = {34},
-  number  = {3},
-  pages   = {16:1--16:45},
-  year    = {2009},
-  doi     = {10.1145/1567274.1567278}
-}
-
-@inproceedings{gu2023pangu,
-  author    = {Gu, Yu and Deng, Xiang and Su, Yu},
-  title     = {Don't Generate, Discriminate: A Proposal for Grounding Language Models to Real-World Environments},
-  booktitle = {Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
-  year      = {2023},
-  pages     = {4928--4949},
-  doi       = {10.18653/v1/2023.acl-long.270},
-  publisher = {Association for Computational Linguistics},
-  address   = {Toronto, Canada}
-}
-
-@inproceedings{gu2024middleware,
-  author    = {Gu, Yu and Shu, Yiheng and Yu, Hao and Liu, Xiao and Dong, Yuxiao and Tang, Jie and Srinivasa, Jayanth and Latapie, Hugo and Su, Yu},
-  title     = {Middleware for {LLMs}: Tools Are Instrumental for Language Agents in Complex Environments},
-  booktitle = {Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing},
-  year      = {2024},
-  pages     = {7646--7663},
-  doi       = {10.18653/v1/2024.emnlp-main.436},
-  publisher = {Association for Computational Linguistics},
-  address   = {Miami, Florida, USA}
-}
-
-@inproceedings{xiong2024interactive,
-  author    = {Xiong, Guanming and Bao, Junwei and Zhao, Wen},
-  title     = {Interactive-{KBQA}: Multi-Turn Interactions for Knowledge Base Question Answering with Large Language Models},
-  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
-  year      = {2024},
-  pages     = {10561--10582},
-  doi       = {10.18653/v1/2024.acl-long.569},
-  publisher = {Association for Computational Linguistics},
-  address   = {Bangkok, Thailand}
-}
-
-@inproceedings{liu2024spinach,
-  author    = {Liu, Shicheng and Semnani, Sina and Triedman, Harold and Xu, Jialiang and Zhao, Isaac Dan and Lam, Monica},
-  title     = {{SPINACH}: {SPARQL}-Based Information Navigation for Challenging Real-World Questions},
-  booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2024},
-  year      = {2024},
-  pages     = {15977--16001},
-  doi       = {10.18653/v1/2024.findings-emnlp.938},
-  publisher = {Association for Computational Linguistics},
-  address   = {Miami, Florida, USA}
-}
-
-@inproceedings{brei2025aruqula,
-  author    = {Brei, Felix and B{\"u}hmann, Lorenz and Frey, Johannes and Gerber, Daniel and Meyer, Lars-Peter and Stadler, Claus and Bulert, Kirill},
-  title     = {{ARUQULA} -- An {LLM} based {Text2SPARQL} Approach using {ReAct} and Knowledge Graph Exploration Utilities},
-  booktitle = {Proceedings of the First International {TEXT2SPARQL} Challenge 2025},
-  series    = {CEUR Workshop Proceedings},
-  volume    = {4094},
-  pages     = {49--63},
-  year      = {2025},
-  url       = {https://ceur-ws.org/Vol-4094/},
-  publisher = {CEUR-WS.org},
-  address   = {Aachen, Germany}
-}
-
-@inproceedings{li2025alphasql,
-  author    = {Li, Boyan and Zhang, Jiayi and Fan, Ju and Xu, Yanwei and Chen, Chong and Tang, Nan and Luo, Yuyu},
-  title     = {Alpha-{SQL}: Zero-Shot Text-to-{SQL} using {Monte Carlo} Tree Search},
-  booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
-  series    = {PMLR},
-  volume    = {267},
-  year      = {2025},
-  publisher = {PMLR},
-  address   = {Vancouver, Canada},
-  pages     = {36810--36830}
-}
-
-@inproceedings{yang2023leandojo,
-  author    = {Yang, Kaiyu and Swope, Aidan and Gu, Alex and Chalamala, Rahul and Song, Peiyang and Yu, Shixing and Godil, Saad and Prenger, Ryan J. and Anandkumar, Animashree},
-  title     = {{LeanDojo}: Theorem Proving with Retrieval-Augmented Language Models},
-  booktitle = {Advances in Neural Information Processing Systems 36 (NeurIPS 2023), Datasets and Benchmarks Track},
-  year      = {2023},
-  publisher = {Curran Associates, Inc.},
-  address   = {Red Hook, NY, USA}
-}
-
-@inproceedings{wu2022autoformalization,
-  author    = {Wu, Yuhuai and Jiang, Albert Qiaochu and Li, Wenda and Rabe, Markus and Staats, Charles and Jamnik, Mateja and Szegedy, Christian},
-  title     = {Autoformalization with Large Language Models},
-  booktitle = {Advances in Neural Information Processing Systems 35 (NeurIPS 2022)},
-  volume    = {35},
-  year      = {2022},
-  publisher = {Curran Associates, Inc.},
-  address   = {Red Hook, NY, USA},
-  doi       = {10.52202/068431-2344}
 }

@@ -1,0 +1,37 @@
+% Packages and macros, following the conventions of the KROMA and MOIRA papers.
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{balance}
+\usepackage[ruled,linesnumbered,noend]{algorithm2e}
+
+% Long code identifiers must not overflow the narrow columns.
+\setlength{\emergencystretch}{2em}
+
+\newcommand{\hermes}{\textsc{Hermes}\xspace}
+\newcommand{\sparql}{SPARQL\xspace}
+\newcommand{\llm}{LLM\xspace}
+\newcommand{\llms}{LLMs\xspace}
+\newcommand{\kw}[1]{{\ensuremath{\mathsf{#1}}}\xspace}
+\newcommand{\stitle}[1]{\vspace{1.2ex}\noindent{\bf #1}}
+\newcommand{\warn}[1]{\textcolor{red}{#1}}
+\newcommand{\ie}{\emph{i.e.,}\xspace}
+\newcommand{\eg}{\emph{e.g.,}\xspace}
+\newcommand{\wrt}{\emph{w.r.t.}\xspace}
+
+% Notation.
+\newcommand{\G}{\mathcal{G}}
+\newcommand{\Sc}{\mathcal{S}}
+\newcommand{\V}{\mathcal{V}}
+\newcommand{\Act}{\mathcal{A}}
+\newcommand{\eval}[2]{[\![ #1 ]\!]_{#2}}
+\newcommand{\vars}{\mathit{vars}}
+\newcommand{\dom}{\mathit{dom}}
+\newcommand{\rng}{\mathit{rng}}
+\newcommand{\sub}{\sqsubseteq}
+\newcommand{\Lit}{\mathsf{Lit}}
+\newcommand{\entails}{\vdash}
+
+% acmart provides the definition, proposition, lemma and example environments.
