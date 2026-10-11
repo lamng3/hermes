@@ -108,3 +108,10 @@ def test_answers_are_parsed_from_a_list():
 
 def test_registered_as_a_system():
     assert "uniqgen" in hermes.systems.available()
+
+
+def test_ctable_without_variables_is_an_error_not_a_crash():
+    ground = {"answer": "?x", "constraints": ["ex:LakePlacid ex:country ex:USA"]}
+    llm = ScriptedLLM(lambda prompt, system: json.dumps(ground))
+    with pytest.raises(ValueError, match="binds a variable"):
+        UniQGen(llm=llm)(QUESTION, OLYMPICS)

@@ -190,6 +190,8 @@ class UniQGen:
         if not any(not c.is_filter for c in ctable):
             raise ValueError("No constraint in the CTable matches the graph.")
         bound = set().union(*(c.variables for c in ctable if not c.is_filter))
+        if not bound:
+            raise ValueError("No constraint in the CTable binds a variable to answer with.")
         if answer not in bound:
             answer = sorted(bound)[0]
         return ctable, answer

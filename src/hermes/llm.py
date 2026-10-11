@@ -59,13 +59,14 @@ class LLM:
 class Ollama(LLM):
     provider = "ollama"
 
-    def __init__(self, model=None, base_url=None, temperature=0, timeout=180.0):
+    def __init__(self, model=None, base_url=None, temperature=0, timeout=180.0, max_tokens=2048):
         self.base_url = (
             base_url or os.environ.get("HERMES_OLLAMA_BASE_URL", "http://127.0.0.1:11434")
         ).rstrip("/")
         self._model = model or os.environ.get("HERMES_OLLAMA_MODEL", "").strip() or None
         self.temperature = temperature
         self.timeout = timeout
+        self.max_tokens = max_tokens
 
     @property
     def model(self):
@@ -84,7 +85,8 @@ class Ollama(LLM):
                         "model": model,
                         "stream": False,
                         "keep_alive": "10m",
-                        "options": {"temperature": self.temperature},
+                        "options": {"temperature": self.temperature,
+                                    "num_predict": self.max_tokens},
                         "messages": [
                             {"role": "system", "content": system},
                             {"role": "user", "content": prompt},
@@ -155,7 +157,7 @@ class OpenAICompatible(LLM):
     """
 
     def __init__(self, model=None, base_url=None, api_key=None, temperature=0, timeout=120.0,
-                 provider="openai", extra=None):
+                 provider="openai", extra=None, max_tokens=2048):
         preset_url, key_env = PROVIDERS.get(provider, (None, "HERMES_LLM_API_KEY"))
         self.provider = provider
         self.api_key = (
@@ -176,6 +178,9 @@ class OpenAICompatible(LLM):
         # Extra request fields, for example {"chat_template_kwargs": {"enable_thinking": false}}
         # to turn off Qwen3's thinking on a vLLM server.
         self.extra = dict(extra or {})
+        # Bound each reply: a small model that starts repeating itself would otherwise
+        # generate up to its context length and run into the request timeout.
+        self.max_tokens = max_tokens
 
     def complete(self, prompt, system=SYSTEM):
         runtime.check()
@@ -191,6 +196,7 @@ class OpenAICompatible(LLM):
                 json={
                     "model": self.model,
                     "temperature": self.temperature,
+                    "max_tokens": self.max_tokens,
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user", "content": prompt},
@@ -237,8 +243,10 @@ class CachedLLM(LLM):
 
     def complete(self, prompt, system=SYSTEM):
         runtime.check()
+        settings = {k: getattr(self.llm, k, None) for k in ("temperature", "max_tokens", "extra")}
         key = hashlib.sha256(
-            json.dumps([self.provider, self.model, system, prompt]).encode()
+            json.dumps([self.provider, self.model, settings, system, prompt],
+                       sort_keys=True, default=str).encode()
         ).hexdigest()
         path = self.directory / key[:2] / f"{key}.json"
         with self._lock:
@@ -300,6 +308,6 @@ def _with_retries(send, attempts=3):
             if attempt == attempts - 1:
                 raise
         else:
-            if response.status_code not in (429, 502, 503, 504) or attempt == attempts - 1:
+            if response.status_code not in (429, 500, 502, 503, 504) or attempt == attempts - 1:
                 return response
         time.sleep(2**attempt)

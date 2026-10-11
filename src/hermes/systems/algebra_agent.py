@@ -90,7 +90,11 @@ class AlgebraAgent:
                 note = "repeated; its result is above. Choose a different action."
                 trace.append({"action": str(action), "observation": note})
                 continue
-            observation = explorer.run(action)
+            try:
+                observation = explorer.run(action)
+            except (TypeError, AttributeError, ValueError, KeyError) as exc:
+                trace.append({"action": str(action), "observation": f"invalid: {exc}"})
+                continue
             trace.append({"action": str(action), "observation": observation.summary()})
         sparql = final_query(explorer)
         if sparql is None:

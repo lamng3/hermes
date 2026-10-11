@@ -122,3 +122,13 @@ def test_group_alone_and_hidden_aggregates_render_valid_sparql(olympics):
     assert "SELECT ?city WHERE" in explorer.sparql
     rows = olympics.query(explorer.sparql)["results"]["bindings"]
     assert [row["city"]["value"].rsplit("#")[1] for row in rows] == ["LakePlacid"]
+
+
+def test_malformed_actions_are_invalid_not_crashes():
+    import pytest
+
+    for bad in [{"op": "triple", "pattern": None}, {"op": "goal", "answer": [["?x"]]},
+                {"op": "limit", "n": "many"}, {"op": "project", "vars": [1, 2]}]:
+        with pytest.raises(ValueError):
+            parse_action(bad)
+    assert parse_action({"op": "limit", "n": "3"}).n == "3"

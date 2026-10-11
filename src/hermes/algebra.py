@@ -338,8 +338,30 @@ def parse_action(data):
                 raise ValueError(f"Action {cls.op!r} needs {item.name!r}.")
             continue
         value = data[item.name]
+        if item.type in (tuple, "tuple") and isinstance(value, str) and item.name != "branches":
+            value = [value]  # "answer": "?x" means ["?x"]
+        _check_type(cls.op, item, value)
         arguments[item.name] = _tuplify(value) if isinstance(value, list) else value
     return cls(**arguments)
+
+
+def _check_type(op, item, value):
+    """Reject malformed model output (null, wrong shapes) as an invalid action."""
+    expected = {str: str, "str": str, int: int, "int": int, bool: bool, "bool": bool,
+                tuple: list, "tuple": list}.get(item.type)
+    if expected is None:
+        return
+    if expected is int and isinstance(value, str) and value.strip().isdigit():
+        return
+    if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):
+        raise ValueError(f"Action {op!r}: {item.name!r} must be a {expected.__name__}.")
+    if expected is list:
+        nested = item.name == "branches"  # union: a list of lists of patterns
+        parts = [v for part in value for v in part] if nested and all(
+            isinstance(part, list) for part in value) else value
+        if (nested and parts is value) or not all(isinstance(v, str) for v in parts):
+            shape = "lists of strings" if nested else "strings"
+            raise ValueError(f"Action {op!r}: {item.name!r} must hold {shape}.")
 
 
 # Feedback.
