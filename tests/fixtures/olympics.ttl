@@ -1,0 +1,146 @@
+# The Olympic host cities from Example 2 of Wang et al., arXiv:2605.00845.
+@prefix ex: <http://example.org/olympics#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:City a owl:Class ;
+    rdfs:label "City" .
+ex:Country a owl:Class ;
+    rdfs:label "Country" .
+ex:OlympicGames a owl:Class ;
+    rdfs:label "Olympic Games" .
+ex:hosted a owl:ObjectProperty ;
+    rdfs:label "hosted" .
+ex:country a owl:ObjectProperty ;
+    rdfs:label "country" .
+ex:season a owl:DatatypeProperty ;
+    rdfs:label "season" .
+ex:year a owl:DatatypeProperty ;
+    rdfs:label "year" .
+
+ex:USA a ex:Country ;
+    rdfs:label "USA", "United States" .
+ex:Greece a ex:Country ;
+    rdfs:label "Greece" .
+ex:France a ex:Country ;
+    rdfs:label "France" .
+ex:UnitedKingdom a ex:Country ;
+    rdfs:label "United Kingdom" .
+ex:Norway a ex:Country ;
+    rdfs:label "Norway" .
+ex:Japan a ex:Country ;
+    rdfs:label "Japan" .
+
+ex:StLouis a ex:City ;
+    rdfs:label "St. Louis" ;
+    ex:country ex:USA ;
+    ex:hosted ex:Summer1904 .
+ex:LakePlacid a ex:City ;
+    rdfs:label "Lake Placid" ;
+    ex:country ex:USA ;
+    ex:hosted ex:Winter1932, ex:Winter1980 .
+ex:LosAngeles a ex:City ;
+    rdfs:label "Los Angeles" ;
+    ex:country ex:USA ;
+    ex:hosted ex:Summer1932, ex:Summer1984 .
+ex:SquawValley a ex:City ;
+    rdfs:label "Squaw Valley" ;
+    ex:country ex:USA ;
+    ex:hosted ex:Winter1960 .
+ex:Atlanta a ex:City ;
+    rdfs:label "Atlanta" ;
+    ex:country ex:USA ;
+    ex:hosted ex:Summer1996 .
+ex:SaltLakeCity a ex:City ;
+    rdfs:label "Salt Lake City" ;
+    ex:country ex:USA ;
+    ex:hosted ex:Winter2002 .
+ex:Chicago a ex:City ;
+    rdfs:label "Chicago" ;
+    ex:country ex:USA .
+ex:Athens a ex:City ;
+    rdfs:label "Athens" ;
+    ex:country ex:Greece ;
+    ex:hosted ex:Summer1896, ex:Summer2004 .
+ex:Paris a ex:City ;
+    rdfs:label "Paris" ;
+    ex:country ex:France ;
+    ex:hosted ex:Summer1900, ex:Summer1924 .
+ex:Chamonix a ex:City ;
+    rdfs:label "Chamonix" ;
+    ex:country ex:France ;
+    ex:hosted ex:Winter1924 .
+ex:London a ex:City ;
+    rdfs:label "London" ;
+    ex:country ex:UnitedKingdom ;
+    ex:hosted ex:Summer1908, ex:Summer1948, ex:Summer2012 .
+ex:Oslo a ex:City ;
+    rdfs:label "Oslo" ;
+    ex:country ex:Norway ;
+    ex:hosted ex:Winter1952 .
+ex:Tokyo a ex:City ;
+    rdfs:label "Tokyo" ;
+    ex:country ex:Japan ;
+    ex:hosted ex:Summer1964 .
+ex:Sapporo a ex:City ;
+    rdfs:label "Sapporo" ;
+    ex:country ex:Japan ;
+    ex:hosted ex:Winter1972 .
+
+ex:Summer1904 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1904 .
+ex:Winter1932 a ex:OlympicGames ;
+    ex:season "Winter" ;
+    ex:year 1932 .
+ex:Winter1980 a ex:OlympicGames ;
+    ex:season "Winter" ;
+    ex:year 1980 .
+ex:Summer1932 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1932 .
+ex:Summer1984 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1984 .
+ex:Winter1960 a ex:OlympicGames ;
+    ex:season "Winter" ;
+    ex:year 1960 .
+ex:Summer1996 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1996 .
+ex:Winter2002 a ex:OlympicGames ;
+    ex:season "Winter" ;
+    ex:year 2002 .
+ex:Summer1896 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1896 .
+ex:Summer2004 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 2004 .
+ex:Summer1900 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1900 .
+ex:Summer1924 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1924 .
+ex:Winter1924 a ex:OlympicGames ;
+    ex:season "Winter" ;
+    ex:year 1924 .
+ex:Summer1908 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1908 .
+ex:Summer1948 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1948 .
+ex:Summer2012 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 2012 .
+ex:Winter1952 a ex:OlympicGames ;
+    ex:season "Winter" ;
+    ex:year 1952 .
+ex:Summer1964 a ex:OlympicGames ;
+    ex:season "Summer" ;
+    ex:year 1964 .
+ex:Winter1972 a ex:OlympicGames ;
+    ex:season "Winter" ;
+    ex:year 1972 .

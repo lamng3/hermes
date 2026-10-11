@@ -1,0 +1,11 @@
+# Ablation from the UniQGen paper: gold answers replace the LLM oracle.
+# Not a fair comparison; it bounds what the search can do with a perfect oracle.
+benchmark: ck26
+system: uniqgen
+leak_gold: true
+params:
+  oracle: gold
+llm:
+  provider: ollama
+  model: llama3.1
+  cache: .cache/llm

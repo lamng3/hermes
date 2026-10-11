@@ -1,0 +1,17 @@
+name: db26
+title: Text2SPARQL'26 DBpedia (DB26)
+graph: dbpedia-t2s
+languages:
+- en
+- es
+license: CC BY-SA 4.0 (Text2SPARQL challenge, AKSW)
+source:
+  questions:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql.aksw.org/935cb5a210717a7596a6028740136ac842db7ede/docs/results/db26/questions_db26.yml
+    sha256: 90baf750e9dde0015e8d9101d1a07b5a892c4aed847ded1b2dfd17088f27da7f
+  gold:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql.aksw.org/935cb5a210717a7596a6028740136ac842db7ede/docs/results/db26/db26_true_result_set.json
+    sha256: aba3f188d032a25cd3a2f51405f63967b538b01e897aa08ee2b4a1dc973dca91
+retrieved: '2026-10-11'
+items: 100
+dataset_id: https://text2sparql.aksw.org/2026/dbpedia/

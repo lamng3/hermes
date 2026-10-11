@@ -1,0 +1,16 @@
+{
+  "config": "training-free",
+  "benchmark": "ck26",
+  "system": "training-free",
+  "model": "llama3.1",
+  "provider": "ollama",
+  "llm_calls": 116,
+  "llm_cache_hits": 2,
+  "graph_executions": 136,
+  "contaminated_examples": 0,
+  "items": 100,
+  "wall_seconds": 373.5,
+  "git_commit": "e7257837b050ecb3e840bcb6e22ed993c8f9c5c8",
+  "python": "3.11.14",
+  "finished": "2026-10-11T00:44:45"
+}

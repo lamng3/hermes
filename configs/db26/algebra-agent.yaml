@@ -1,0 +1,9 @@
+# SPARQL algebra as actions, with execution feedback after every step.
+benchmark: db26
+system: algebra-agent
+params:
+  max_steps: 15
+llm:
+  provider: ollama
+  model: llama3.1
+  cache: .cache/llm

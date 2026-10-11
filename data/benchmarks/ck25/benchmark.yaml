@@ -1,0 +1,16 @@
+name: ck25
+title: Text2SPARQL'25 corporate (CK25)
+graph: corporate
+languages:
+- en
+license: CC BY-SA 4.0 (Text2SPARQL challenge, AKSW)
+source:
+  questions:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql-client-examples/c6666be31796d6b8555031198a6d54df166d4406/examples_ck25/questions_ck25.yml
+    sha256: 305263d864bca6c7452d5d10bfd57fc9598a815d7c4fd930d0e36e699ba0e6a6
+  gold:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql-client-examples/c6666be31796d6b8555031198a6d54df166d4406/examples_ck25/ck25_true_result_set.json
+    sha256: 58162af9569034c1dc482f0511417615530076015479d6f1aa9856d39dfd9e9c
+retrieved: '2026-10-11'
+items: 50
+dataset_id: https://text2sparql.aksw.org/2025/corporate/

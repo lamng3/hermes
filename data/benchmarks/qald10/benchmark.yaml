@@ -1,0 +1,15 @@
+name: qald10
+title: QALD-10 (Wikidata)
+graph: wikidata
+languages:
+- en
+- de
+- ru
+- zh
+license: MIT (KGQA/QALD-10)
+source:
+  questions:
+    url: https://raw.githubusercontent.com/KGQA/QALD-10/89caa86371c7a65c6c87a64e0eeaa0e247ff5fe5/data/qald_10/qald_10.json
+    sha256: 55720cbc9effb250f4b814a9c27ce5f5d61d863d5943bc8aa93773f6f761c6cc
+retrieved: '2026-10-11'
+items: 1564

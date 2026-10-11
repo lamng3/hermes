@@ -1,0 +1,17 @@
+name: ck26
+title: Text2SPARQL'26 corporate (CK26)
+graph: corporate
+languages:
+- en
+- de
+license: CC BY-SA 4.0 (Text2SPARQL challenge, AKSW)
+source:
+  questions:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql.aksw.org/935cb5a210717a7596a6028740136ac842db7ede/docs/results/ck26/questions_ck26.yml
+    sha256: c4188547a97352ed3332581e3c5f1d64fb4c8d4db4a4f24072f7f1c13b523b8c
+  gold:
+    url: https://raw.githubusercontent.com/AKSW/text2sparql.aksw.org/935cb5a210717a7596a6028740136ac842db7ede/docs/results/ck26/ck26_true_result_set.json
+    sha256: 074cc3a1da73b9493a60598505ac4e5929717ac347d1a786902b8896a6ef2d23
+retrieved: '2026-10-11'
+items: 100
+dataset_id: https://text2sparql.aksw.org/2026/corporate/
