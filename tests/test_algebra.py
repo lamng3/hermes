@@ -30,7 +30,7 @@ def test_render_covers_the_operators():
     text = render(plan)
     for fragment in ["OPTIONAL { ?c ex:country ?k . }", "UNION", "MINUS {", "BIND(STR(?c) AS ?s)",
                      "FILTER(?s != \"\")", "SELECT DISTINCT ?c (COUNT(?g) AS ?n)", "GROUP BY ?c",
-                     "HAVING((?n > 1))", "ORDER BY DESC(?n)", "LIMIT 3", "OFFSET 1"]:
+                     "HAVING((COUNT(?g) > 1))", "ORDER BY DESC(?n)", "LIMIT 3", "OFFSET 1"]:
         assert fragment in text
 
 
@@ -100,3 +100,25 @@ def test_lookup_falls_back_to_partial_names(olympics):
     explorer = Explorer(olympics)
     found = act(explorer, op="lookup", text="Mr. Placid")
     assert found.sample[0]["entity"] == "ex:LakePlacid"
+
+
+def test_group_alone_and_hidden_aggregates_render_valid_sparql(olympics):
+    explorer = Explorer(olympics)
+    for data in [
+        {"op": "triple", "pattern": "?city ex:hosted ?g"},
+        {"op": "triple", "pattern": '?g ex:season "Winter"'},
+        {"op": "group", "vars": ["?city"]},
+    ]:
+        assert act(explorer, **data).ok
+    assert explorer.plan.group_by == ("?city",)
+    for data in [
+        {"op": "aggregate", "expr": "COUNT(?g)", "alias": "?n"},
+        {"op": "order", "expr": "DESC(?n)"},
+        {"op": "limit", "n": 1},
+        {"op": "project", "vars": ["?city"]},
+    ]:
+        assert act(explorer, **data).ok
+    assert "ORDER BY DESC(COUNT(?g))" in explorer.sparql
+    assert "SELECT ?city WHERE" in explorer.sparql
+    rows = olympics.query(explorer.sparql)["results"]["bindings"]
+    assert [row["city"]["value"].rsplit("#")[1] for row in rows] == ["LakePlacid"]

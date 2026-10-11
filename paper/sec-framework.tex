@@ -13,7 +13,7 @@ kinds of auxiliary actions.
 entities whose label contains a string, and \kw{inspect} lists the
 predicates around an entity or used by the instances of a class, with
 counts and an example value.
-\emph{Control} actions are \kw{goal}, which states $\sigma$;
+\emph{Control} actions are \kw{goal}, which states $g$;
 \kw{undo}, which restores the previous plan; and \kw{finish}.
 Each action is a JSON object, so a planner emits one action per turn
 and the explorer parses it into a typed command.
@@ -33,9 +33,9 @@ analogue of costing a rewrite before choosing it.
 Executions are memoized, so revisiting a plan costs nothing.
 
 \stitle{Verifier}.
-The verifier computes $\Gamma_\pi$ from the schema, checks the
+The verifier computes $\Gamma_Q$ from the schema, checks the
 conditions of Section~\ref{sec-problem}, and returns errors, warnings,
-the typing context, and the conditions of $\sigma$ that $\pi$ does not
+the typing context, and the conditions of $g$ that $Q$ does not
 yet satisfy (the \emph{open goals}).
 Error messages name the offending term and, for an unknown class or
 property, suggest the closest term in the schema.
