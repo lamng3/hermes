@@ -25,7 +25,11 @@ llm: {provider: openai, model: gpt-4o-mini}                  # OPENAI_API_KEY
 llm: {provider: anthropic, model: claude-...}                # ANTHROPIC_API_KEY
 llm: {provider: huggingface, model: Qwen/Qwen2.5-7B-Instruct} # HF_TOKEN
 llm: {provider: together, model: ...}                        # TOGETHER_API_KEY
+llm: {provider: modal, model: ..., base_url: <endpoint>/v1}  # MODAL_PROXY_TOKEN, Modal Shared Endpoints
 ```
+
+Modal Shared Endpoints bill per token; a GPU you deploy yourself (below)
+bills compute time, which the Starter plan's monthly credits cover.
 
 **Any Hugging Face model on a Modal GPU.** Deploy a vLLM server once; it
 scales to zero when idle, so it costs nothing between runs.
