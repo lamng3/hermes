@@ -7,6 +7,74 @@ rewrites `results/LEADERBOARD.md`. Pass config paths to run a subset.
 the paper's figures in `paper/fig/` from the latest finished run of each
 configuration, so the charts follow the results.
 
+## Where to run
+
+Pick by what the models need; the commands are the same everywhere.
+
+| Where | When | Setup |
+|---|---|---|
+| Your laptop | small local models (Ollama), short sweeps | `pip install -e .`, `ollama pull llama3.1` |
+| A machine over SSH | long sweeps, a workstation or lab GPU box | `git clone`, `pip install -e .`, `hermes data fetch ...`, then `hermes sweep ...` inside `tmux` |
+| Modal | Hugging Face models on a GPU, or sweeps that should not hold your machine | `pip install modal`, `modal setup` (once) |
+
+**Hosted APIs.** Name the provider and model; the key comes from the
+provider's usual variable.
+
+```yaml
+llm: {provider: openai, model: gpt-4o-mini}                  # OPENAI_API_KEY
+llm: {provider: anthropic, model: claude-...}                # ANTHROPIC_API_KEY
+llm: {provider: huggingface, model: Qwen/Qwen2.5-7B-Instruct} # HF_TOKEN
+llm: {provider: together, model: ...}                        # TOGETHER_API_KEY
+```
+
+**Any Hugging Face model on a Modal GPU.** Deploy a vLLM server once; it
+scales to zero when idle, so it costs nothing between runs.
+
+```bash
+HERMES_MODEL=Qwen/Qwen2.5-7B-Instruct modal deploy deploy/modal_vllm.py
+export HERMES_VLLM_URL=https://<printed url>/v1
+# gated models such as Llama: HERMES_HF_SECRET=<your Modal secret with HF_TOKEN>
+```
+
+then use `llm: {provider: vllm, model: Qwen/Qwen2.5-7B-Instruct, base_url: ${HERMES_VLLM_URL}}`.
+
+**A whole sweep on Modal.** The sweep runs in a Modal container; results
+and the reply cache are kept in Modal Volumes, and rerunning resumes.
+
+```bash
+modal run experiments/modal_sweep.py --file configs/sweeps/paper.yaml --only @qwen
+modal volume get hermes-results / results/ --force
+```
+
+## Sweeps
+
+`configs/sweeps/paper.yaml` is the paper's grid. A sweep lists benchmarks,
+systems (an ablation is one more entry with a name), and models, plus shared
+settings; every combination becomes a run named `system@model`.
+
+```bash
+hermes sweep configs/sweeps/paper.yaml --list           # what would run
+hermes sweep configs/sweeps/paper.yaml --only @gpt      # a slice
+hermes sweep configs/sweeps/paper.yaml --limit 5        # a smoke test
+```
+
+Unfinished runs resume, and a failing configuration does not stop the
+others.
+
+## Limits
+
+Every run bounds its time and memory, so one bad query cannot hold a
+machine:
+
+```yaml
+limits:
+  query_seconds: 30    # any single SPARQL query; local queries run in a worker that is killed
+  item_seconds: 300    # one question end to end; the item is recorded as an error
+```
+
+Endpoint results over 50 MB are refused, and the query cache never keeps
+very large results.
+
 ## A run
 
 `hermes run configs/<benchmark>/<config>.yaml` does, for each item:
@@ -22,7 +90,7 @@ It writes `results/<benchmark>/<config>/<run id>/`:
 | `config.yaml` | the config as run |
 | `predictions.jsonl` | per item: SPARQL, error, seconds, official and strict scores, whether gold reproduces, system extras (traces) |
 | `metrics.json` | averages: `official`, `strict`, `reproducible`; error count; latency p50/p95 |
-| `run.json` | model, LLM calls and cache hits, graph executions, git commit, wall time |
+| `run.json` | model, LLM calls and cache hits, input and output tokens, model and graph seconds, graph executions, limits, the commit the run started from, wall time |
 
 An interrupted run continues where it stopped with `--resume <run id>`.
 
