@@ -188,3 +188,47 @@ def test_runs_record_cost_per_item_and_per_run(data, tmp_path):
                                     "graph_executions", "graph_seconds"}
     run = json.loads((folder / "run.json").read_text())
     assert run["graph_executions"] > 0 and "input_tokens" in run and "graph_seconds" in run
+
+
+def test_items_past_their_time_limit_are_stopped(data, tmp_path):
+    import time
+
+    from hermes import systems
+
+    def sleepy(question, kg, context):
+        time.sleep(5)
+        return gold_system(question, kg, context)
+
+    if "sleepy-test" not in systems.available():
+        systems.register("sleepy-test")(sleepy)
+    config = {"name": "slow", "benchmark": "oly", "system": "sleepy-test", "params": {},
+              "llm": {}, "limit": 1, "limits": {"item_seconds": 0.5}}
+    started = time.time()
+    metrics = Run(config, results=tmp_path / "r", llm=ScriptedLLM([])).execute()
+    assert time.time() - started < 4
+    assert metrics["errors"] == 1
+
+
+def test_sweeps_expand_benchmarks_systems_and_models(tmp_path, monkeypatch):
+    from hermes.experiments import expand_sweep, latest_unfinished
+
+    monkeypatch.setenv("SERVER", "https://gpu.example/v1")
+    sweep = tmp_path / "s.yaml"
+    sweep.write_text(yaml.safe_dump({
+        "benchmarks": ["a", "b"], "cache": "c", "limits": {"item_seconds": 9},
+        "systems": [{"system": "prover"}, {"name": "short", "system": "prover",
+                                           "params": {"max_steps": 3}}],
+        "models": [{"name": "small", "provider": "ollama", "model": "m"},
+                   {"name": "gpu", "provider": "vllm", "model": "q", "base_url": "${SERVER}"}],
+    }))
+    configs = expand_sweep(sweep)
+    assert len(configs) == 8
+    gpu = next(c for c in configs if c["name"] == "short@gpu" and c["benchmark"] == "b")
+    assert gpu["llm"] == {"provider": "vllm", "model": "q", "base_url": "https://gpu.example/v1",
+                          "cache": "c"}
+    assert gpu["params"] == {"max_steps": 3} and gpu["limits"] == {"item_seconds": 9}
+    run = tmp_path / "r" / "b" / "short@gpu" / "20260101-000000"
+    run.mkdir(parents=True)
+    assert latest_unfinished(tmp_path / "r", gpu) == "20260101-000000"
+    (run / "metrics.json").write_text("{}")
+    assert latest_unfinished(tmp_path / "r", gpu) is None

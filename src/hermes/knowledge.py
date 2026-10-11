@@ -24,12 +24,16 @@ class KnowledgeGraph:
         self.vocabulary_limit = vocabulary_limit
 
     @classmethod
-    def from_files(cls, *paths, schema=(), name="", engine="oxigraph"):
-        """Instance data and schema from local RDF files."""
+    def from_files(cls, *paths, schema=(), name="", engine="oxigraph", timeout=None):
+        """Instance data and schema from local RDF files.
+
+        With a timeout (seconds), instance queries run in a worker process
+        that is killed if a query takes longer.
+        """
         schema_store = local_store(*schema, engine=engine) if schema else None
         files = tuple(schema) + tuple(paths)
         return cls(
-            local_store(*paths, engine=engine),
+            local_store(*paths, engine=engine, timeout=timeout),
             schema=schema_store,
             prefixes=lambda: declared_prefixes(*files),
             name=name or Path(paths[0]).stem,

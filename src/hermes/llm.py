@@ -122,30 +122,56 @@ class Ollama(LLM):
         return names[0]
 
 
-class OpenAICompatible(LLM):
-    provider = "openai"
+# Hosted APIs that speak the OpenAI chat-completions protocol:
+# name -> (base URL, environment variable holding the key).
+PROVIDERS = {
+    "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY"),
+    "anthropic": ("https://api.anthropic.com/v1", "ANTHROPIC_API_KEY"),
+    "together": ("https://api.together.xyz/v1", "TOGETHER_API_KEY"),
+    "huggingface": ("https://router.huggingface.co/v1", "HF_TOKEN"),
+    # A server you run, such as vLLM on Modal (deploy/modal_vllm.py): give base_url.
+    "vllm": (None, "HERMES_LLM_API_KEY"),
+}
 
-    def __init__(self, model=None, base_url=None, api_key=None, temperature=0, timeout=60.0):
-        self.api_key = api_key or os.environ.get("HERMES_LLM_API_KEY", "").strip()
-        self.base_url = (
-            base_url or os.environ.get("HERMES_LLM_BASE_URL", "https://api.together.xyz/v1")
-        ).rstrip("/")
-        self.model = model or os.environ.get(
-            "HERMES_LLM_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+
+class OpenAICompatible(LLM):
+    """Any OpenAI-compatible chat API: a hosted provider or a vLLM server.
+
+    The key comes from `api_key`, the provider's own variable (for example
+    OPENAI_API_KEY), or HERMES_LLM_API_KEY; the URL from `base_url`,
+    HERMES_LLM_BASE_URL, or the provider preset.
+    """
+
+    def __init__(self, model=None, base_url=None, api_key=None, temperature=0, timeout=120.0,
+                 provider="openai"):
+        preset_url, key_env = PROVIDERS.get(provider, (None, "HERMES_LLM_API_KEY"))
+        self.provider = provider
+        self.api_key = (
+            api_key
+            or os.environ.get(key_env or "", "").strip()
+            or os.environ.get("HERMES_LLM_API_KEY", "").strip()
         )
+        self.key_env = key_env
+        base = base_url or os.environ.get("HERMES_LLM_BASE_URL") or preset_url
+        if not base:
+            raise ValueError(f"Provider {provider!r} needs base_url, for example a vLLM server.")
+        self.base_url = base.rstrip("/")
+        self.model = model or os.environ.get("HERMES_LLM_MODEL", "")
+        if not self.model:
+            raise ValueError(f"Provider {provider!r} needs a model name.")
         self.temperature = temperature
         self.timeout = timeout
 
     def complete(self, prompt, system=SYSTEM):
-        if not self.api_key:
+        if not self.api_key and self.provider != "vllm":
             raise LookupError(
-                "Set HERMES_LLM_API_KEY, or leave HERMES_LLM_PROVIDER unset to use Ollama."
+                f"Set {self.key_env} (or HERMES_LLM_API_KEY) for provider {self.provider!r}."
             )
         started = time.time()
         response = _with_retries(
             lambda: httpx.post(
                 f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
+                headers={"Authorization": f"Bearer {self.api_key or 'none'}"},
                 json={
                     "model": self.model,
                     "temperature": self.temperature,
@@ -205,14 +231,19 @@ class CachedLLM(LLM):
 
 
 def create(provider=None, cache=None, **options):
-    """Factory: build a client from a config section."""
+    """Factory: build a client from a config section.
+
+    provider is "ollama" (local, the default) or a key of PROVIDERS:
+    openai, anthropic, together, huggingface, or vllm (with base_url).
+    """
     provider = (provider or os.environ.get("HERMES_LLM_PROVIDER", "") or "ollama").lower()
-    if provider == "openai":
-        llm = OpenAICompatible(**options)
-    elif provider == "ollama":
+    if provider == "ollama":
         llm = Ollama(**options)
+    elif provider in PROVIDERS:
+        llm = OpenAICompatible(provider=provider, **options)
     else:
-        raise ValueError(f"Unknown LLM provider {provider!r}. Use ollama or openai.")
+        known = ", ".join(["ollama", *PROVIDERS])
+        raise ValueError(f"Unknown LLM provider {provider!r}. Use one of: {known}.")
     return CachedLLM(llm, cache) if cache else llm
 
 

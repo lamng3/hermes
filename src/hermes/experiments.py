@@ -15,9 +15,12 @@ interrupted run resumes from its predictions.jsonl. Observers receive
 start/item/end events, for progress output or extra logging.
 """
 
+import contextlib
 import json
 import platform
+import signal
 import subprocess
+import threading
 import sys
 import time
 from datetime import datetime
@@ -29,6 +32,82 @@ from hermes import benchmarks, llm as llms, systems
 from hermes.context import Context, Example
 from hermes.evaluation import aggregate, score
 from hermes.store import QueryError
+
+
+LIMITS = {
+    "query_seconds": 30,   # one SPARQL query, local or remote
+    "item_seconds": 300,   # one question, end to end
+}
+
+
+class ItemTimeout(Exception):
+    """An item ran past its time limit."""
+
+
+@contextlib.contextmanager
+def time_limit(seconds):
+    """Interrupt the block after `seconds` (main thread only; else no limit)."""
+    if not seconds or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def expire(signum, frame):
+        raise ItemTimeout()
+
+    previous = signal.signal(signal.SIGALRM, expire)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+def expand_sweep(path):
+    """Expand a sweep file into run configs: benchmarks x systems x models.
+
+    A sweep lists `benchmarks` (or one `benchmark`), `systems` (each a config
+    fragment: system, params, and an optional name, so ablations are just more
+    entries), and `models` (each an llm section with a name). Shared keys such
+    as limits, languages, limit, and cache apply to every run. ${VAR} in any
+    string is read from the environment. Each run is named system@model.
+    """
+    import os
+
+    text = os.path.expandvars(Path(path).read_text(encoding="utf-8"))
+    sweep = yaml.safe_load(text)
+    benches = sweep.get("benchmarks") or [sweep["benchmark"]]
+    models = sweep.get("models") or [{"name": "default"}]
+    shared = {k: v for k, v in sweep.items()
+              if k not in ("name", "benchmark", "benchmarks", "systems", "models", "cache")}
+    configs = []
+    for bench in benches:
+        for entry in sweep["systems"]:
+            for model in models:
+                model = dict(model)
+                model_name = model.pop("name", model.get("model", "default"))
+                if sweep.get("cache"):
+                    model.setdefault("cache", sweep["cache"])
+                config = {**shared, **{k: v for k, v in entry.items() if k != "name"}}
+                config.update(
+                    benchmark=bench,
+                    name=f"{entry.get('name', entry['system'])}@{model_name}",
+                    llm=model,
+                )
+                config.setdefault("params", {})
+                configs.append(config)
+    return configs
+
+
+def latest_unfinished(results, config):
+    """The run id of the newest run of this config without metrics, if any."""
+    folder = Path(results) / config["benchmark"] / config["name"]
+    if not folder.exists():
+        return None
+    runs = sorted(p for p in folder.iterdir() if p.is_dir())
+    if runs and not (runs[-1] / "metrics.json").exists():
+        return runs[-1].name
+    return None
 
 
 def load_config(path):
@@ -74,7 +153,10 @@ class Run:
     def __init__(self, config, results="results", run_id=None, observers=(), llm=None, kg=None):
         self.config = config
         self.benchmark = benchmarks.load(config["benchmark"])
-        self.kg = kg or benchmarks.graph(self.benchmark.graph)
+        self.limits = {**LIMITS, **(config.get("limits") or {})}
+        self.kg = kg or benchmarks.graph(
+            self.benchmark.graph, query_timeout=self.limits["query_seconds"]
+        )
         self.llm = llm or llms.create(**config["llm"])
         params = dict(config["params"])
         if _takes_llm(config["system"]):
@@ -134,7 +216,10 @@ class Run:
         started = time.time()
         output, error = {}, ""
         try:
-            output = self.system(item.question, self.kg, context)
+            with time_limit(self.limits["item_seconds"]):
+                output = self.system(item.question, self.kg, context)
+        except ItemTimeout:
+            error = f"ItemTimeout: stopped after {self.limits['item_seconds']} s"
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
         seconds = time.time() - started
@@ -220,6 +305,7 @@ class Run:
             "output_tokens": (getattr(llm, "usage", {}) or {}).get("output_tokens"),
             "llm_seconds": round((getattr(llm, "usage", {}) or {}).get("seconds", 0.0), 1),
             "contaminated_examples": self.contamination,
+            "limits": self.limits,
             "items": len(records),
             "wall_seconds": round(wall, 1),
             "git_commit": self.code["commit"],

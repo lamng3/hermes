@@ -121,8 +121,12 @@ def graphs():
     return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-def graph(name):
-    """Factory: a KnowledgeGraph from its entry in data/graphs.yaml."""
+def graph(name, query_timeout=None):
+    """Factory: a KnowledgeGraph from its entry in data/graphs.yaml.
+
+    query_timeout (seconds) bounds every instance query; it overrides the
+    graph's own `timeout` entry.
+    """
     spec = graphs().get(name)
     if spec is None:
         raise KeyError(f"Unknown graph {name!r}. Declare it in {data_dir() / 'graphs.yaml'}.")
@@ -138,7 +142,8 @@ def graph(name):
                 f"Run `hermes data fetch` for a benchmark that uses it."
             )
         kg = KnowledgeGraph.from_files(
-            *files, schema=schema, name=name, engine=spec.get("engine", "oxigraph")
+            *files, schema=schema, name=name, engine=spec.get("engine", "oxigraph"),
+            timeout=query_timeout or spec.get("timeout"),
         )
     else:
         kg = KnowledgeGraph.from_endpoint(
@@ -146,7 +151,7 @@ def graph(name):
             schema=schema,
             prefixes=list((spec.get("prefixes") or {}).items()),
             name=name,
-            timeout=spec.get("timeout", 60.0),
+            timeout=query_timeout or spec.get("timeout", 60.0),
         )
     kg.vocabulary_limit = limit
     return kg

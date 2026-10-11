@@ -108,13 +108,87 @@ class OxigraphStore(GraphStore):
         return f"OxigraphStore({', '.join(str(path) for path in self.paths)})"
 
 
-def local_store(*paths, engine="oxigraph"):
-    """Factory for file-backed stores."""
-    if engine == "rdflib":
-        return LocalStore(*paths)
-    if engine == "oxigraph":
-        return OxigraphStore(*paths)
-    raise ValueError(f"Unknown engine {engine!r}. Use oxigraph or rdflib.")
+def local_store(*paths, engine="oxigraph", timeout=None):
+    """Factory for file-backed stores; with a timeout, queries run in a worker."""
+    if engine not in ("oxigraph", "rdflib"):
+        raise ValueError(f"Unknown engine {engine!r}. Use oxigraph or rdflib.")
+    if timeout:
+        return TimeoutStore(paths, engine, timeout)
+    return LocalStore(*paths) if engine == "rdflib" else OxigraphStore(*paths)
+
+
+def _worker(paths, engine, connection):
+    store = local_store(*paths, engine=engine)
+    while True:
+        sparql = connection.recv()
+        if sparql is None:
+            return
+        try:
+            connection.send((True, store.query(sparql)))
+        except QueryError as exc:
+            connection.send((False, str(exc)))
+
+
+class TimeoutStore(GraphStore):
+    """Local files queried in a worker process, killed past a timeout.
+
+    Neither Oxigraph nor rdflib can cancel a running query, so a query that
+    explodes (a cartesian product, say) would otherwise hold the run and its
+    memory forever. The worker is restarted after a timeout; reloading a
+    graph of tens of thousands of triples takes well under a second.
+    """
+
+    local = True
+
+    def __init__(self, paths, engine="oxigraph", timeout=30.0):
+        self.paths = [str(path) for path in paths]
+        self.engine = engine
+        self.timeout = timeout
+        self._process = None
+        self._connection = None
+
+    def _start(self):
+        import multiprocessing
+
+        context = multiprocessing.get_context("spawn")
+        self._connection, child = context.Pipe()
+        self._process = context.Process(
+            target=_worker, args=(self.paths, self.engine, child), daemon=True
+        )
+        self._process.start()
+
+    def _stop(self):
+        if self._process is not None:
+            self._process.kill()
+            self._process.join()
+        self._process = None
+
+    def query(self, sparql):
+        if self._process is None or not self._process.is_alive():
+            self._start()
+        self._connection.send(sparql)
+        if not self._connection.poll(self.timeout):
+            self._stop()
+            raise QueryError(f"query timed out after {self.timeout:g} s")
+        ok, value = self._connection.recv()
+        if not ok:
+            raise QueryError(value)
+        return value
+
+    def close(self):
+        if self._process is not None and self._process.is_alive():
+            self._connection.send(None)
+            self._process.join(timeout=5)
+        self._stop()
+
+    def __del__(self):
+        try:
+            self._stop()
+        except Exception:
+            pass
+
+    def __repr__(self):
+        return f"TimeoutStore({', '.join(self.paths)}, timeout={self.timeout:g}s)"
 
 
 class EndpointStore(GraphStore):
@@ -169,31 +243,52 @@ class EndpointStore(GraphStore):
 
 
 class CachedStore(GraphStore):
-    """Decorator: memoize results and count real executions."""
+    """Decorator: memoize results and count real executions.
 
-    def __init__(self, store):
+    The cache is bounded: it keeps the `max_entries` most recently used
+    results and never keeps a result with more than `max_rows` rows, so a
+    long run's memory stays flat.
+    """
+
+    def __init__(self, store, max_entries=2000, max_rows=10_000):
+        from collections import OrderedDict
+
         self.store = store
         self.local = store.local
         self.executions = 0
         self.seconds = 0.0
-        self._cache = {}
+        self.max_entries = max_entries
+        self.max_rows = max_rows
+        self._cache = OrderedDict()
 
     def query(self, sparql):
-        if sparql not in self._cache:
+        if sparql in self._cache:
+            self._cache.move_to_end(sparql)
+            cached = self._cache[sparql]
+        else:
             self.executions += 1
             started = time.perf_counter()
             try:
-                self._cache[sparql] = self.store.query(sparql)
+                cached = self.store.query(sparql)
             except QueryError as exc:
-                self._cache[sparql] = exc
+                cached = exc
             self.seconds += time.perf_counter() - started
-        cached = self._cache[sparql]
+            if _rows(cached) <= self.max_rows:
+                self._cache[sparql] = cached
+                if len(self._cache) > self.max_entries:
+                    self._cache.popitem(last=False)
         if isinstance(cached, QueryError):
             raise cached
         return cached
 
     def __repr__(self):
         return f"CachedStore({self.store!r})"
+
+
+def _rows(result):
+    if isinstance(result, QueryError):
+        return 0
+    return len(result.get("results", {}).get("bindings", []))
 
 
 def _oxigraph_format(path):
