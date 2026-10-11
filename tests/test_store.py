@@ -6,7 +6,7 @@ import pytest
 
 from conftest import FIXTURES
 from hermes import KnowledgeGraph
-from hermes.store import CachedStore, LocalStore, OxigraphStore, QueryError
+from hermes.store import CachedStore, EndpointStore, LocalStore, OxigraphStore, QueryError
 
 QUERY = """PREFIX ex: <http://example.org/olympics#>
 SELECT ?city WHERE { ?city ex:country ex:USA } ORDER BY ?city"""
@@ -78,3 +78,22 @@ def test_cached_llm_records_usage_and_replays_for_free(tmp_path):
     cached.complete("q")
     assert cached.usage == {"calls": 1, "input_tokens": 10, "output_tokens": 3, "seconds": 0.5}
     assert (cached.calls, cached.hits) == (2, 1)
+
+
+def test_endpoint_store_refuses_huge_results():
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'{"head": {"vars": ["x"]}, "results": {"bindings": [' + b" " * 5000 + b"]}}")
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.handle_request, daemon=True).start()
+    store = EndpointStore(f"http://127.0.0.1:{server.server_port}/sparql", max_bytes=1000)
+    with pytest.raises(QueryError, match="larger than"):
+        store.query("SELECT * WHERE { ?s ?p ?o }")
+    server.server_close()
