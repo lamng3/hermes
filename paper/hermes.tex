@@ -37,11 +37,12 @@ same system, on the same graphs, behind a scorer that reproduces the
 published Text2SPARQL 2026 numbers and that also reports a strict
 variant and a reproducible subset.
 On the 2026 corporate track, with the local model \texttt{llama3.1},
-the one-shot baseline reaches a set $F_1$ of 0.017 and UniQGen reaches
-0.064.
-Both are far below the published leaderboard.
-These runs are a first measurement on one local model.
-The operator-level policies have not been measured yet.
+the operator-level agent reaches a set $F_1$ of 0.094 and a recall of
+0.300, against 0.064 for UniQGen and 0.017 for one-shot generation,
+at about seven times UniQGen's model calls.
+All three are far below the published leaderboard; these are first
+measurements on one small local model.
+The verified prover has not been measured yet.
 \end{abstract}
 
 \keywords{SPARQL, knowledge graphs, natural language interfaces, query algebra, execution feedback}
@@ -416,50 +417,82 @@ method.
 \section{Preliminary Results}
 \label{sec:results}
 
-Two runs have finished, both on CK26 (50 questions in English and
-German, 100 items), both with local Ollama \texttt{llama3.1}, and both
-with \texttt{contaminated\_examples} at 0.
-Table~\ref{tab:runs} rounds the run files to three decimal places.
-The one-shot system made 116 model calls and 136 graph executions
-(373\,s wall, median latency 3.0\,s, 95th percentile 8.5\,s) and failed
-to produce a runnable query on 24 items.
-UniQGen, at beam width 5, made 198 model calls and 667 graph executions
-(2,136\,s wall, median 15.1\,s, 95th percentile 58.1\,s) and failed on
-41 items.
-On the 86 items whose gold query reproduces, \texttt{set\_F\_ndcg} is
-0.022 for the one-shot system and 0.065 for UniQGen.
+Five runs have finished, all with local Ollama \texttt{llama3.1} and
+all with \texttt{contaminated\_examples} at 0: four on CK26 (50
+questions in English and German, 100 items) and the one-shot system on
+DB26 (50 questions in English and Spanish, 100 items).
+Table~\ref{tab:runs} rounds the run files to three decimal places, and
+Table~\ref{tab:cost} gives the cost of each run.
+An error is an item for which no query was produced or the query failed
+to run.
 
 \begin{table}[t]
-  \caption{Finished CK26 runs, official metrics except the strict $F_1$
+  \caption{Finished runs, official metrics except the strict $F_1$
     column.
     Model: \texttt{llama3.1}.
-    Published Text2SPARQL entries are not in this table; they were
-    scored by the organizers on Tentris.}
+    The gold-oracle row is an ablation, not a result.}
   \label{tab:runs}
   \small
-  \begin{tabular}{@{}lrrrrr@{}}
+  \begin{tabular}{@{}llrrrrr@{}}
     \toprule
-    System & $F_1$ & P & R & $F_{\mathrm{ndcg}}$ & strict $F_1$ \\
+    & System & $F_1$ & P & R & $F_{\mathrm{ndcg}}$ & strict \\
     \midrule
-    training-free & 0.017 & 0.036 & 0.015 & 0.018 & 0.017 \\
-    uniqgen       & 0.064 & 0.061 & 0.142 & 0.064 & 0.064 \\
+    CK26 & training-free & 0.017 & 0.036 & 0.015 & 0.018 & 0.017 \\
+         & uniqgen       & 0.064 & 0.061 & 0.142 & 0.064 & 0.064 \\
+         & uniqgen, gold oracle & 0.086 & 0.082 & 0.229 & 0.086 & 0.086 \\
+         & algebra-agent & 0.094 & 0.101 & 0.300 & 0.094 & 0.094 \\
+    \midrule
+    DB26 & training-free & 0.017 & 0.038 & 0.011 & 0.017 & 0.017 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
+\begin{table}[t]
+  \caption{Cost per run (100 items each).}
+  \label{tab:cost}
+  \small
+  \begin{tabular}{@{}llrrrr@{}}
+    \toprule
+    & System & Calls & Executions & p50 (s) & Errors \\
+    \midrule
+    CK26 & training-free & 116   & 136 & 3.0  & 24 \\
+         & uniqgen       & 198   & 667 & 15.1 & 41 \\
+         & algebra-agent & 1,451 & 422 & 24.4 & 4 \\
+    \midrule
+    DB26 & training-free & 103   & 144 & 3.2  & 9 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The algebra agent has the highest $F_1$ and the highest recall, and it
+fails on 4 items where UniQGen fails on 41: a policy that builds the
+plan one operator at a time almost always ends with a query that runs.
+It averaged 13.9 steps per item, 37 items scored above zero, and 4 were
+answered exactly.
+The comparison is not at equal budget.
+The agent made about 14.5 model calls per item, UniQGen about 2, so
+these numbers do not yet answer the first research question; a
+budget-matched comparison is the next experiment.
+The gold-oracle ablation replays UniQGen's cached constraint tables and
+changes only the reference answers, so its gain over the LLM oracle
+(0.064 to 0.086) isolates the oracle; it still stays below the agent,
+because 41 items fail before the search starts, when the constraint
+table matches nothing in the graph.
+Restricting to the 86 CK26 items whose gold query reproduces on
+Oxigraph changes no headline number by more than 0.004, and the strict
+and official columns agree, since none of these runs gets credit from
+the ASK or nDCG quirks.
+On DB26, where the vocabulary is not shown to the model, the one-shot
+system matches its CK26 score.
+
 Table~\ref{tab:peers} is the published CK26 leaderboard, for scale.
 It is not a paired comparison.
 The organizers scored those systems on Tentris, the model behind each
-entry is not controlled here, and our two runs execute on Oxigraph.
-Read against that board, both local runs are an order of magnitude
-below the strongest published entry and below the weakest of them.
-Between our two runs, the constraint search returns higher recall than
-the one-shot draft and spends more calls and more executions to do it.
-That is a fact about these two configurations on this model.
-It is not yet evidence about operator-level feedback: the algebra agent
-and the prover have no finished run, and the gold-oracle ablation has
-not been run.
-No DB26, QALD, or model-scaling number is included.
+entry is not controlled here, and our runs execute on Oxigraph.
+Read against that board, every local run is below the weakest
+published entry; the published entries also use larger models.
+The prover, the DB26 agent, QALD, and model scaling have no finished
+run yet.
 
 \begin{table}[t]
   \caption{Published Text2SPARQL 2026 CK26 scores
@@ -534,12 +567,13 @@ The one-shot baseline and UniQGen already run behind that interface,
 on benchmarks whose official scores the scorer reproduces, with the
 ASK, nDCG, overlap, and engine caveats kept visible beside the
 official column.
-The first CK26 runs, on \texttt{llama3.1}, land at 0.018 and 0.064
-\texttt{set\_F\_ndcg}.
-The measurements that would speak to the four questions in the
-introduction --- the algebra agent, the prover, the feedback
-ablations, search against the prompted policy, and the move to
-DBpedia and Wikidata --- are still to be run.
+On CK26 with \texttt{llama3.1}, the operator-level agent reaches 0.094
+set $F_1$, against 0.064 for UniQGen and 0.017 for one-shot generation,
+and almost never ends without a runnable query, though at a larger
+call budget.
+The measurements that would answer the four questions in the
+introduction --- a budget-matched comparison, the prover, the feedback
+ablations, and the move to DBpedia and Wikidata --- are next.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{hermes}
