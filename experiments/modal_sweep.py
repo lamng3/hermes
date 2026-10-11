@@ -5,8 +5,9 @@
 The sweep runs in a Modal container (CPU only: the models are behind APIs or
 a vLLM server from deploy/modal_vllm.py), so long runs do not hold your
 machine. Results and the reply cache live in Modal Volumes and survive
-interruptions; rerunning the same command resumes unfinished runs, and
---fresh starts new runs beside the old ones. Fetch the results afterwards:
+interruptions. Rerunning the same command skips finished runs and resumes
+unfinished ones; --fresh starts new runs beside the old ones. Fetch the
+results afterwards:
 
     modal volume get hermes-results / results/ --force
 
@@ -56,7 +57,9 @@ def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False, fresh=F
     os.chdir("/hermes")
     os.environ["HERMES_GIT_COMMIT"] = commit or "unknown"
     os.environ["HERMES_GIT_DIRTY"] = "1" if dirty else "0"
-    from hermes.experiments import Progress, Run, expand_sweep, latest_unfinished
+    from hermes.experiments import (
+        Progress, Run, expand_sweep, latest_finished, latest_unfinished,
+    )
 
     path = Path("/tmp/sweep.yaml")
     path.write_text(sweep_text)
@@ -69,6 +72,10 @@ def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False, fresh=F
         config.setdefault("llm", {})["cache"] = ".cache/llm"
         if not wait_until_ready(config["llm"]):
             print(f"  skipped: {config['llm'].get('base_url')} did not become ready")
+            continue
+        done = None if fresh else latest_finished("results", config)
+        if done:
+            print(f"{config['benchmark']}/{config['name']} (done: {done})")
             continue
         resume = None if fresh else latest_unfinished("results", config)
         print(f"{config['benchmark']}/{config['name']}" + (f" (resuming {resume})" if resume else ""))
