@@ -1,0 +1,26 @@
+{
+  "config": "algebra-agent@qwen3-14b",
+  "benchmark": "ck26",
+  "system": "algebra-agent",
+  "model": "Qwen/Qwen3-14B",
+  "provider": "vllm",
+  "llm_calls": 1424,
+  "llm_cache_hits": 0,
+  "graph_executions": 884,
+  "graph_seconds": 34.7,
+  "llm_model_calls": 1424,
+  "input_tokens": 2945425,
+  "output_tokens": 27958,
+  "llm_seconds": 2175.5,
+  "contaminated_examples": 0,
+  "limits": {
+    "query_seconds": 30,
+    "item_seconds": 300
+  },
+  "items": 100,
+  "wall_seconds": 150.5,
+  "git_commit": "b9309a287bc57a60e1b8e725f6a601351e5d2719",
+  "git_dirty": false,
+  "python": "3.11.12",
+  "finished": "2026-10-11T19:34:55"
+}
