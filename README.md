@@ -7,8 +7,8 @@
 ## Abstract
 
 Hermes carries a question across to the graph. Named for the Greek messenger
-and interpreter, it is a research framework for translating natural-language
-questions into SPARQL over ontologies and knowledge graphs. Existing methods
+and interpreter, it translates natural-language questions into SPARQL over
+ontologies and knowledge graphs. Existing methods
 are reimplemented as interchangeable *systems* behind one interface,
 benchmarks are converted into one normalized format, and every experiment is
 a config whose predictions, metrics and provenance are kept under `results/`.
@@ -41,7 +41,7 @@ Install name: `hermes-sparql`. Import name: `hermes`.
 ## Layout
 
 ```
-src/hermes/      the framework: stores, systems, algebra, benchmarks, evaluation
+src/hermes/      source: stores, systems, algebra, benchmarks, evaluation
 data/            normalized benchmarks and the graphs they run on (see data/README.md)
 configs/         one YAML file per experiment: benchmark x system x model
 experiments/     the protocol and the script that reproduces every result
