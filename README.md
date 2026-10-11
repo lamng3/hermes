@@ -1,6 +1,8 @@
-# Hermes: Natural Language to SPARQL over Ontologies
+# Hermes: Verified Query Planning over the SPARQL Algebra with Language Agents
 
-**Lam Nguyen** · [Code](https://github.com/lamng3/hermes) · [Documentation](https://lamng3.github.io/hermes-docs/) · [Leaderboard](results/LEADERBOARD.md) · [Paper](paper/hermes.pdf)
+Official implementation of the Hermes paper.
+
+**Lam Nguyen**, Case Western Reserve University · [Code](https://github.com/lamng3/hermes) · [Documentation](https://lamng3.github.io/hermes-docs/) · [Leaderboard](results/LEADERBOARD.md) · [Paper](paper/hermes.pdf)
 
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 
@@ -184,7 +186,7 @@ changes elsewhere:
 
 ```bibtex
 @misc{nguyen2026hermes,
-  title  = {Hermes: Natural Language to SPARQL over Ontologies},
+  title  = {Hermes: Verified Query Planning over the SPARQL Algebra with Language Agents},
   author = {Nguyen, Lam},
   year   = {2026},
   url    = {https://github.com/lamng3/hermes}
