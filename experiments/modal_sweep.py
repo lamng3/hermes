@@ -50,10 +50,12 @@ app = modal.App("hermes-sweep")
     volumes={"/hermes/results": results, "/hermes/.cache": cache},
     secrets=[modal.Secret.from_dict({k: os.environ[k] for k in KEYS if os.environ.get(k)})],
 )
-def run_sweep(sweep_text, only=None, limit=None):
+def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False):
     import sys
 
     os.chdir("/hermes")
+    os.environ["HERMES_GIT_COMMIT"] = commit or "unknown"
+    os.environ["HERMES_GIT_DIRTY"] = "1" if dirty else "0"
     from hermes.experiments import Progress, Run, expand_sweep, latest_unfinished
 
     path = Path("/tmp/sweep.yaml")
@@ -80,7 +82,14 @@ def run_sweep(sweep_text, only=None, limit=None):
 
 @app.local_entrypoint()
 def main(file: str, only: str = "", limit: int = 0):
+    import subprocess
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+
+    commit = git("rev-parse", "HEAD")
+    dirty = bool(git("status", "--porcelain", "--untracked-files=no", "--", "src"))
     text = os.path.expandvars(Path(file).read_text(encoding="utf-8"))
-    for bench, name, f1 in run_sweep.remote(text, only or None, limit or None):
+    for bench, name, f1 in run_sweep.remote(text, only or None, limit or None, commit, dirty):
         print(f"{bench}/{name}: set F1 {f1:.3f}")
     print("Fetch the results with: modal volume get hermes-results / results/ --force")
