@@ -47,7 +47,7 @@ def main(argv=None):
     sweep.add_argument("--list", action="store_true", help="List the runs and exit.")
     sweep.add_argument("--limit", type=int, help="Only the first N items of each run.")
     sweep.add_argument("--fresh", action="store_true",
-                       help="Start new runs instead of resuming; old runs are kept.")
+                       help="Start new runs even where finished ones exist; old runs are kept.")
     sweep.add_argument("--results", default="results")
 
     report = commands.add_parser("report", help="Leaderboard of runs and official peers.")
@@ -84,12 +84,18 @@ def main(argv=None):
                 config["limit"] = args.limit
             Run(config, args.results, args.resume, observers=[Progress()]).execute()
     elif args.command == "sweep":
-        from hermes.experiments import Progress, Run, expand_sweep, latest_unfinished
+        from hermes.experiments import (
+            Progress, Run, expand_sweep, latest_finished, latest_unfinished,
+        )
 
         configs = [c for c in expand_sweep(args.file) if not args.only or args.only in c["name"]]
         for config in configs:
             if args.limit:
                 config["limit"] = args.limit
+            done = None if args.fresh else latest_finished(args.results, config)
+            if done:
+                print(f"{config['benchmark']}/{config['name']} (done: {done})")
+                continue
             resume = None if args.fresh else latest_unfinished(args.results, config)
             print(f"{config['benchmark']}/{config['name']}"
                   + (f" (resuming {resume})" if resume else ""))

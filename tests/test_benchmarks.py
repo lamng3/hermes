@@ -210,7 +210,7 @@ def test_items_past_their_time_limit_are_stopped(data, tmp_path):
 
 
 def test_sweeps_expand_benchmarks_systems_and_models(tmp_path, monkeypatch):
-    from hermes.experiments import expand_sweep, latest_unfinished
+    from hermes.experiments import expand_sweep, latest_finished, latest_unfinished
 
     monkeypatch.setenv("SERVER", "https://gpu.example/v1")
     sweep = tmp_path / "s.yaml"
@@ -230,8 +230,10 @@ def test_sweeps_expand_benchmarks_systems_and_models(tmp_path, monkeypatch):
     run = tmp_path / "r" / "b" / "short@gpu" / "20260101-000000"
     run.mkdir(parents=True)
     assert latest_unfinished(tmp_path / "r", gpu) == "20260101-000000"
+    assert latest_finished(tmp_path / "r", gpu) is None
     (run / "metrics.json").write_text("{}")
     assert latest_unfinished(tmp_path / "r", gpu) is None
+    assert latest_finished(tmp_path / "r", gpu) == "20260101-000000"
 
 
 def test_concurrent_items_overlap_and_keep_exact_costs(data, tmp_path):

@@ -99,6 +99,17 @@ def expand_sweep(path):
     return configs
 
 
+def latest_finished(results, config):
+    """The run id of the newest run of this config if it has metrics, else None."""
+    folder = Path(results) / config["benchmark"] / config["name"]
+    if not folder.exists():
+        return None
+    runs = sorted(p for p in folder.iterdir() if p.is_dir())
+    if runs and (runs[-1] / "metrics.json").exists():
+        return runs[-1].name
+    return None
+
+
 def latest_unfinished(results, config):
     """The run id of the newest run of this config without metrics, if any."""
     folder = Path(results) / config["benchmark"] / config["name"]

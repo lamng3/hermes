@@ -62,8 +62,8 @@ hermes sweep configs/sweeps/paper.yaml --only @gpt      # a slice
 hermes sweep configs/sweeps/paper.yaml --limit 5        # a smoke test
 ```
 
-Unfinished runs resume, and a failing configuration does not stop the
-others. To redo runs, for example after a fix, pass `--fresh`. It starts
+Finished runs are skipped, unfinished runs resume, and a failing
+configuration does not stop the others. To redo runs, for example after a fix, pass `--fresh`. It starts
 new timestamped runs and leaves the old ones in place. Reports and figures
 read the newest finished run. Never delete a run folder: commit finished
 runs, so every number in the paper can be traced to its predictions.
