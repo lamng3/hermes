@@ -172,3 +172,19 @@ def test_text2sparql_api(data):
         urllib.request.urlopen(base + "?" + unknown)
     assert error.value.code == 404
     server.shutdown()
+
+
+def test_runs_record_cost_per_item_and_per_run(data, tmp_path):
+    from hermes import systems
+
+    if "gold-cost-test" not in systems.available():
+        systems.register("gold-cost-test")(gold_system)
+    config = {"name": "cost", "benchmark": "oly", "system": "gold-cost-test", "params": {},
+              "llm": {}}
+    Run(config, results=tmp_path / "r", run_id="c", llm=ScriptedLLM([])).execute()
+    folder = tmp_path / "r" / "oly" / "cost" / "c"
+    rows = [json.loads(line) for line in (folder / "predictions.jsonl").read_text().splitlines()]
+    assert set(rows[0]["cost"]) == {"llm_calls", "input_tokens", "output_tokens", "llm_seconds",
+                                    "graph_executions", "graph_seconds"}
+    run = json.loads((folder / "run.json").read_text())
+    assert run["graph_executions"] > 0 and "input_tokens" in run and "graph_seconds" in run

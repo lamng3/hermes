@@ -61,3 +61,20 @@ def test_endpoint_store_speaks_the_sparql_protocol():
     assert seen["body"].startswith("query=ASK")
     assert seen["accept"] == "application/sparql-results+json"
     server.server_close()
+
+
+def test_cached_llm_records_usage_and_replays_for_free(tmp_path):
+    from hermes.llm import LLM, CachedLLM
+
+    class Counting(LLM):
+        provider, model = "test", "counting"
+
+        def complete(self, prompt, system=None):
+            self.record(10, 3, 0.5)
+            return "ok"
+
+    cached = CachedLLM(Counting(), tmp_path)
+    cached.complete("q")
+    cached.complete("q")
+    assert cached.usage == {"calls": 1, "input_tokens": 10, "output_tokens": 3, "seconds": 0.5}
+    assert (cached.calls, cached.hits) == (2, 1)

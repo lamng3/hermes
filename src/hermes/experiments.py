@@ -130,6 +130,7 @@ class Run:
         context = Context(examples=self.examples)
         if self.config.get("leak_gold"):
             context.answers = [v for v, g in self.benchmark.gold.get(item.id, {}).items() if g]
+        spent_before = self._spent()
         started = time.time()
         output, error = {}, ""
         try:
@@ -148,17 +149,31 @@ class Run:
         order = item.id in self.benchmark.order_required
         extra = {k: v for k, v in output.items() if k not in ("sparql", "model", "provider")} \
             if isinstance(output, dict) else {}
+        spent = {k: round(v - spent_before[k], 3) for k, v in self._spent().items()}
         return {
             "id": item.id,
             "question": item.question,
             "sparql": sparql,
             "error": error,
+            "cost": spent,
             "gold_reproduces": self.gold_reproduces(item, gold, order),
             "seconds": round(seconds, 3),
             "scores": score(result, gold, order),
             "strict": score(result, gold, order, strict=True),
             "answers": len(result.get("results", {}).get("bindings", [])) if result else 0,
             "extra": extra,
+        }
+
+    def _spent(self):
+        """Model and graph usage so far: calls, tokens, seconds, executions."""
+        usage = getattr(self.llm, "usage", {}) or {}
+        return {
+            "llm_calls": usage.get("calls", 0),
+            "input_tokens": usage.get("input_tokens", 0),
+            "output_tokens": usage.get("output_tokens", 0),
+            "llm_seconds": usage.get("seconds", 0.0),
+            "graph_executions": self.kg.executions,
+            "graph_seconds": self.kg.store.seconds,
         }
 
     def gold_reproduces(self, item, gold, order):
@@ -199,6 +214,11 @@ class Run:
             "llm_calls": getattr(llm, "calls", None),
             "llm_cache_hits": getattr(llm, "hits", None),
             "graph_executions": self.kg.executions,
+            "graph_seconds": round(self.kg.store.seconds, 1),
+            "llm_model_calls": (getattr(llm, "usage", {}) or {}).get("calls"),
+            "input_tokens": (getattr(llm, "usage", {}) or {}).get("input_tokens"),
+            "output_tokens": (getattr(llm, "usage", {}) or {}).get("output_tokens"),
+            "llm_seconds": round((getattr(llm, "usage", {}) or {}).get("seconds", 0.0), 1),
             "contaminated_examples": self.contamination,
             "items": len(records),
             "wall_seconds": round(wall, 1),
