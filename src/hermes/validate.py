@@ -2,7 +2,13 @@
 
 import re
 
+import threading
+
 from rdflib.plugins.sparql import prepareQuery
+
+# rdflib's SPARQL parser (pyparsing) keeps shared state and is not
+# thread-safe: concurrent parses corrupt it. Every parse goes through here.
+_PARSE_LOCK = threading.Lock()
 
 _FENCE = re.compile(r"```(?:sparql)?\s*([\s\S]*?)```", re.IGNORECASE)
 _QUERY = re.compile(
@@ -23,8 +29,10 @@ def extract_sparql(content):
 
 
 def parse_error(sparql):
+    """None if the query parses, else the parser's message. Thread-safe."""
     try:
-        prepareQuery(sparql)
+        with _PARSE_LOCK:
+            prepareQuery(sparql)
     except Exception as exc:
         return str(exc).strip()
     return None

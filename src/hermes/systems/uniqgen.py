@@ -28,13 +28,13 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from rdflib.plugins.sparql import prepareQuery
 
 from hermes import llm as llms
 from hermes.context import as_context
 from hermes.knowledge import as_knowledge_graph
 from hermes.linking import linker_for, normalize
 from hermes.systems import register
+from hermes.validate import parse_error
 
 _VARIABLE = re.compile(r"\?[A-Za-z_]\w*")
 CORE_PREFIXES = (
@@ -364,11 +364,7 @@ class GraphView:
         return text
 
     def parses(self, row):
-        try:
-            prepareQuery(f"{self.header}SELECT * WHERE {{ {_statement(row)} }}")
-        except Exception:
-            return False
-        return True
+        return parse_error(f"{self.header}SELECT * WHERE {{ {_statement(row)} }}") is None
 
     def count(self, rows):
         body = "\n  ".join(_statement(row) for row in rows)
