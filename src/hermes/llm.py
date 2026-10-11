@@ -198,6 +198,7 @@ class OpenAICompatible(LLM):
                     **self.extra,
                 },
                 timeout=runtime.remaining(self.timeout),
+                follow_redirects=True,  # Modal answers slow requests with a 303 to poll
             )
         )
         response.raise_for_status()

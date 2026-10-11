@@ -67,6 +67,9 @@ def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False):
         if limit:
             config["limit"] = limit
         config.setdefault("llm", {})["cache"] = ".cache/llm"
+        if not wait_until_ready(config["llm"]):
+            print(f"  skipped: {config['llm'].get('base_url')} did not become ready")
+            continue
         resume = latest_unfinished("results", config)
         print(f"{config['benchmark']}/{config['name']}" + (f" (resuming {resume})" if resume else ""))
         try:
@@ -78,6 +81,26 @@ def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False):
         results.commit()
         cache.commit()
     return finished
+
+
+def wait_until_ready(llm, minutes=20):
+    """Wake a vLLM server (it scales to zero when idle) and wait for it."""
+    import time
+
+    import httpx
+
+    url = (llm.get("base_url") or "").rstrip("/")
+    if llm.get("provider") != "vllm" or not url:
+        return True
+    deadline = time.time() + minutes * 60
+    while time.time() < deadline:
+        try:
+            if httpx.get(f"{url}/models", timeout=25).status_code == 200:
+                return True
+        except httpx.HTTPError:
+            pass
+        time.sleep(5)
+    return False
 
 
 @app.local_entrypoint()
