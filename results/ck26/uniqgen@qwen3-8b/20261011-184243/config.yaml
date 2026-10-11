@@ -1,0 +1,18 @@
+concurrency: 16
+limits:
+  query_seconds: 30
+  item_seconds: 300
+system: uniqgen
+params:
+  beam_width: 5
+  max_depth: 5
+benchmark: ck26
+name: uniqgen@qwen3-8b
+llm:
+  provider: vllm
+  model: Qwen/Qwen3-8B
+  base_url: https://lamng3-work--hermes-vllm-qwen3-8b-serve.modal.run/v1
+  extra:
+    chat_template_kwargs:
+      enable_thinking: false
+  cache: .cache/llm

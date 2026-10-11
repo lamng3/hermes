@@ -1,0 +1,26 @@
+{
+  "config": "uniqgen@qwen3-4b",
+  "benchmark": "ck26",
+  "system": "uniqgen",
+  "model": "Qwen/Qwen3-4B",
+  "provider": "vllm",
+  "llm_calls": 180,
+  "llm_cache_hits": 0,
+  "graph_executions": 1046,
+  "graph_seconds": 30.2,
+  "llm_model_calls": 180,
+  "input_tokens": 418762,
+  "output_tokens": 39938,
+  "llm_seconds": 995.1,
+  "contaminated_examples": 0,
+  "limits": {
+    "query_seconds": 30,
+    "item_seconds": 300
+  },
+  "items": 100,
+  "wall_seconds": 99.0,
+  "git_commit": "3f4a9d18788d1608e69e4110b425e7f3b84f56c4",
+  "git_dirty": false,
+  "python": "3.11.12",
+  "finished": "2026-10-11T18:40:02"
+}
