@@ -3,6 +3,10 @@
 `bash experiments/run_all.sh` reproduces every run in `results/`, then
 rewrites `results/LEADERBOARD.md`. Pass config paths to run a subset.
 
+`python experiments/figures.py` (with the `figures` extra installed) rebuilds
+the paper's figures in `paper/fig/` from the latest finished run of each
+configuration, so the charts follow the results.
+
 ## A run
 
 `hermes run configs/<benchmark>/<config>.yaml` does, for each item:

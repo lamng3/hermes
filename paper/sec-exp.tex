@@ -109,7 +109,8 @@ Table~\ref{tab-main} reports the finished runs.
 On CK26, \hermes{}$^-$ reaches the highest $F_1$ (0.094) and recall
 (0.300), against 0.064 and 0.142 for CGS and 0.017 and 0.015 for
 OneShot.
-It answers 4 items exactly and 37 with non-zero $F_1$.
+It answers 4 items exactly and 37 with non-zero $F_1$
+(Figure~\ref{fig-outcomes}).
 The ranking holds in both languages: $F_1$ is 0.098 (English) and
 0.091 (German) for \hermes{}$^-$, 0.048 and 0.081 for CGS, and 0.007
 and 0.027 for OneShot.
@@ -118,6 +119,14 @@ $F_{\mathrm{ndcg}}$ by more than 0.004.
 On DB26, where the DBpedia vocabulary is too large to show to the
 model, OneShot reaches 0.017, as on CK26.
 \warn{[Pending: CGS, \hermes{}$^-$, and \hermes on DB26.]}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig/outcomes.pdf}
+  \caption{Outcome of each CK26 item: no runnable query, a query with
+    $F_1 = 0$, a partial answer, or the exact answer.}
+  \label{fig-outcomes}
+\end{figure}
 
 \begin{table}[t]
   \caption{Effectiveness (official metrics; strict is set $F_1$ under
@@ -141,60 +150,40 @@ model, OneShot reaches 0.017, as on CK26.
   \end{tabular}
 \end{table}
 
-For scale, the published 2026 entries on CK26 range from 0.157 to 0.832
-in $F_{\mathrm{ndcg}}$ (Table~\ref{tab-peers}).
+For scale, Figure~\ref{fig-leaderboard} places our runs among the
+published 2026 entries on CK26, which range from 0.157 to 0.832 in
+$F_{\mathrm{ndcg}}$~\cite{smeros2026sparqlllm,text2sparql}.
 This is not a paired comparison: those systems were scored by the
 organizers on Tentris, and their models are not controlled here.
 Every method in Table~\ref{tab-main} uses an 8B local model and stays
 below the weakest entry.
 
-\begin{table}[t]
-  \caption{Published Text2SPARQL 2026 scores on CK26
-    ($F_{\mathrm{ndcg}}$), from the organizers' evaluation.}
-  \label{tab-peers}
-  \small
-  \begin{tabular}{@{}lr@{\hspace{2.5em}}lr@{}}
-    \toprule
-    Entry & $F_{\mathrm{ndcg}}$ & Entry & $F_{\mathrm{ndcg}}$ \\
-    \midrule
-    SPARQL-LLM~\cite{smeros2026sparqlllm} & 0.832 & LIBER-AI-CLAUDE & 0.335 \\
-    INFAI-ETI-A & 0.633 & IRIS & 0.217 \\
-    ADFR & 0.513 & LIBER-AI-QWEN & 0.206 \\
-    INFAI-ETI-C & 0.452 & INFAI-ETI-B & 0.157 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig/leaderboard.pdf}
+  \caption{Our CK26 runs (8B local model) among the published
+    Text2SPARQL 2026 entries (gray), scored by the organizers.
+    Hatching marks the variant without the verifier.}
+  \label{fig-leaderboard}
+\end{figure}
 
-Table~\ref{tab-features} breaks CK26 down by the feature tags of the
+Figure~\ref{fig-features} breaks CK26 down by the feature tags of the
 gold queries.
 Operator-level planning gains most on plain selections and filters.
-No method answers aggregation, slicing, or ASK questions: every
-$F_1$ on \kw{COUNT}, \kw{GROUP}, and \kw{LIMIT} is at most 0.03, and all
-three score 0 on the six ASK items.
+No method answers aggregation, slicing, or ASK questions: every $F_1$
+on \kw{COUNT}, \kw{GROUP}, and \kw{LIMIT} is at most 0.03, and all three
+score 0 on the six ASK items.
 These are exactly the questions whose answer shape (a number, a single
 value, a Boolean) a goal states before the query exists, which is what
 the verified planner is designed to enforce.
 
-\begin{table}[t]
-  \caption{CK26 set $F_1$ by feature tag of the gold query. A question
-    can carry several tags; $n$ counts items.}
-  \label{tab-features}
-  \small
-  \begin{tabular}{@{}lrrrr@{}}
-    \toprule
-    Tag & $n$ & OneShot & CGS & \hermes{}$^-$ \\
-    \midrule
-    \kw{SELECT} & 94 & 0.018 & 0.068 & 0.100 \\
-    \kw{FILTER} & 10 & 0.007 & 0.293 & 0.290 \\
-    \kw{ORDER} & 30 & 0.012 & 0.025 & 0.022 \\
-    \kw{SUBSELECT} & 8 & 0.000 & 0.011 & 0.022 \\
-    \kw{GROUP} & 18 & 0.000 & 0.019 & 0.012 \\
-    \kw{COUNT} & 16 & 0.000 & 0.016 & 0.013 \\
-    \kw{LIMIT} & 26 & 0.000 & 0.029 & 0.002 \\
-    \kw{ASK} & 6 & 0.000 & 0.000 & 0.000 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig/features.pdf}
+  \caption{CK26 set $F_1$ by feature tag of the gold query; a question
+    can carry several tags. Unlabeled bars are 0.}
+  \label{fig-features}
+\end{figure}
 
 \subsection{RQ2: Components}
 
@@ -218,7 +207,8 @@ count, the change in count, the row sample, and the error message.]}
 
 \subsection{RQ3: Cost}
 
-Table~\ref{tab-cost} reports the cost of each run.
+Table~\ref{tab-cost} reports the cost of each run, and
+Figure~\ref{fig-cost} sets accuracy against model calls.
 \hermes{}$^-$ ends with a runnable query on 96 of 100 items, against 59
 for CGS and 76 for OneShot, but it spends 1,451 model calls (14.5 per
 item, 13.9 steps on average) against 198 for CGS and 116 for OneShot.
@@ -229,6 +219,15 @@ Graph executions are cheaper: memoization keeps \hermes{}$^-$ at 422
 executions, below the 667 of CGS's beam search.
 \warn{[Pending: budget-matched comparison, \eg CGS or OneShot with
 self-consistency at 15 calls per item.]}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig/cost.pdf}
+  \caption{Set $F_1$ against model calls per item on CK26. Hollow
+    markers are ablations: CGS with gold reference answers, and \hermes
+    without the verifier.}
+  \label{fig-cost}
+\end{figure}
 
 \begin{table}[t]
   \caption{Cost per run on CK26 (100 items). Errors are items with no
