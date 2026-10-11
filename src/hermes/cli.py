@@ -46,6 +46,8 @@ def main(argv=None):
     sweep.add_argument("--only", help="Run only configs whose name contains this text.")
     sweep.add_argument("--list", action="store_true", help="List the runs and exit.")
     sweep.add_argument("--limit", type=int, help="Only the first N items of each run.")
+    sweep.add_argument("--fresh", action="store_true",
+                       help="Start new runs instead of resuming; old runs are kept.")
     sweep.add_argument("--results", default="results")
 
     report = commands.add_parser("report", help="Leaderboard of runs and official peers.")
@@ -88,7 +90,7 @@ def main(argv=None):
         for config in configs:
             if args.limit:
                 config["limit"] = args.limit
-            resume = latest_unfinished(args.results, config)
+            resume = None if args.fresh else latest_unfinished(args.results, config)
             print(f"{config['benchmark']}/{config['name']}"
                   + (f" (resuming {resume})" if resume else ""))
             if args.list:

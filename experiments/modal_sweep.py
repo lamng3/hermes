@@ -5,8 +5,8 @@
 The sweep runs in a Modal container (CPU only: the models are behind APIs or
 a vLLM server from deploy/modal_vllm.py), so long runs do not hold your
 machine. Results and the reply cache live in Modal Volumes and survive
-interruptions; rerunning the same command resumes unfinished runs. Fetch the
-results afterwards:
+interruptions; rerunning the same command resumes unfinished runs, and
+--fresh starts new runs beside the old ones. Fetch the results afterwards:
 
     modal volume get hermes-results / results/ --force
 
@@ -50,7 +50,7 @@ app = modal.App("hermes-sweep")
     volumes={"/hermes/results": results, "/hermes/.cache": cache},
     secrets=[modal.Secret.from_dict({k: os.environ[k] for k in KEYS if os.environ.get(k)})],
 )
-def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False):
+def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False, fresh=False):
     import sys
 
     os.chdir("/hermes")
@@ -70,7 +70,7 @@ def run_sweep(sweep_text, only=None, limit=None, commit="", dirty=False):
         if not wait_until_ready(config["llm"]):
             print(f"  skipped: {config['llm'].get('base_url')} did not become ready")
             continue
-        resume = latest_unfinished("results", config)
+        resume = None if fresh else latest_unfinished("results", config)
         print(f"{config['benchmark']}/{config['name']}" + (f" (resuming {resume})" if resume else ""))
         try:
             metrics = Run(config, "results", resume, observers=[Progress()]).execute()
@@ -104,7 +104,7 @@ def wait_until_ready(llm, minutes=20):
 
 
 @app.local_entrypoint()
-def main(file: str, only: str = "", limit: int = 0):
+def main(file: str, only: str = "", limit: int = 0, fresh: bool = False):
     import subprocess
 
     def git(*args):
@@ -113,6 +113,6 @@ def main(file: str, only: str = "", limit: int = 0):
     commit = git("rev-parse", "HEAD")
     dirty = bool(git("status", "--porcelain", "--untracked-files=no", "--", "src"))
     text = os.path.expandvars(Path(file).read_text(encoding="utf-8"))
-    for bench, name, f1 in run_sweep.remote(text, only or None, limit or None, commit, dirty):
+    for bench, name, f1 in run_sweep.remote(text, only or None, limit or None, commit, dirty, fresh):
         print(f"{bench}/{name}: set F1 {f1:.3f}")
     print("Fetch the results with: modal volume get hermes-results / results/ --force")
