@@ -50,6 +50,11 @@ question. Finish as soon as the result looks right."""
 
 @register("algebra-agent")
 class AlgebraAgent:
+    """Template: subclasses change the explorer, the prompt text, or finishing."""
+
+    actions = ACTIONS
+    rules = RULES
+
     def __init__(self, llm=None, max_steps=15, sample_size=5, max_entities=10):
         self.llm = llm
         self.max_steps = max_steps
@@ -63,20 +68,23 @@ class AlgebraAgent:
         llm = self.llm or llms.from_env()
         context = as_context(context)
         kg = as_knowledge_graph(kg)
-        explorer = Explorer(kg, sample_size=self.sample_size)
+        explorer = self.explorer_for(kg)
         entities = explorer.linker.link(question)[: self.max_entities]
         trace = []
         for _turn in range(self.max_steps):
-            reply = llm.complete(
-                prompt(question, kg.vocabulary, explorer, entities, trace, context), SYSTEM
-            )
+            text = prompt(question, kg.vocabulary, explorer, entities, trace, context,
+                          self.actions, self.rules, self.state(explorer))
+            reply = llm.complete(text, SYSTEM)
             try:
                 action = parse_action(reply)
             except ValueError as exc:
                 trace.append({"action": reply.strip()[:200], "observation": f"invalid: {exc}"})
                 continue
             if isinstance(action, Finish):
-                trace.append({"action": str(action), "observation": "finished"})
+                refusal = self.refuse_finish(explorer)
+                trace.append({"action": str(action), "observation": refusal or "finished"})
+                if refusal:
+                    continue
                 break
             if trace and trace[-1]["action"] == str(action):
                 note = "repeated; its result is above. Choose a different action."
@@ -93,7 +101,22 @@ class AlgebraAgent:
             "steps": len(trace),
             "model": llm.model,
             "provider": llm.provider,
+            **self.report(explorer),
         }
+
+    def explorer_for(self, kg):
+        return Explorer(kg, sample_size=self.sample_size)
+
+    def state(self, explorer):
+        """Extra prompt text describing the current state."""
+        return ""
+
+    def refuse_finish(self, explorer):
+        """A reason to keep going, or None to accept finish."""
+        return None
+
+    def report(self, explorer):
+        return {}
 
 
 def final_query(explorer):
@@ -104,14 +127,15 @@ def final_query(explorer):
     return None
 
 
-def prompt(question, vocabulary, explorer, entities, trace, context):
+def prompt(question, vocabulary, explorer, entities, trace, context,
+           actions=ACTIONS, rules=RULES, state=""):
     prefixes = "\n".join(f"PREFIX {p}: <{ns}>" for p, ns in explorer.prefixes)
     classes = "\n".join(f"- {item}" for item in vocabulary["classes"]) or "- (none)"
     properties = "\n".join(f"- {item}" for item in vocabulary["properties"]) or "- (none)"
     linked = "\n".join(f"- {explorer.short(iri)}" for iri in entities) or "- (none found)"
     sections = [
-        ACTIONS,
-        RULES,
+        actions,
+        rules,
         f"Prefixes:\n{prefixes}",
         f"Classes:\n{classes}",
         f"Properties:\n{properties}",
@@ -131,6 +155,8 @@ def prompt(question, vocabulary, explorer, entities, trace, context):
             for number, step in enumerate(trace, 1)
         )
         sections.append(f"Steps so far:\n{steps}")
+    if state:
+        sections.append(state)
     current = explorer.sparql if not explorer.plan.empty else "(empty)"
     sections.append(f"Current query:\n{current}\n\nNext action:")
     return "\n\n".join(sections)

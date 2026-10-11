@@ -25,7 +25,7 @@ LLM or search, chooses the actions; see hermes.systems.algebra_agent.
 
 import json
 import re
-from dataclasses import dataclass, field, fields, replace
+from dataclasses import MISSING, dataclass, field, fields, replace
 
 from rdflib.plugins.sparql import prepareQuery
 
@@ -296,6 +296,17 @@ class Inspect(Action):
     reads_graph = True
 
 
+@action("goal")
+@dataclass(frozen=True)
+class State(Action):
+    """State what the question asks for, like a theorem statement."""
+
+    answer: tuple = ()
+    kind: str = "entity"
+    type: str = ""
+    many: bool = True
+
+
 @action("undo")
 @dataclass(frozen=True)
 class Undo(Action):
@@ -319,7 +330,9 @@ def parse_action(data):
     arguments = {}
     for item in fields(cls):
         if item.name not in data:
-            raise ValueError(f"Action {cls.op!r} needs {item.name!r}.")
+            if item.default is MISSING:
+                raise ValueError(f"Action {cls.op!r} needs {item.name!r}.")
+            continue
         value = data[item.name]
         arguments[item.name] = _tuplify(value) if isinstance(value, list) else value
     return cls(**arguments)
@@ -339,6 +352,7 @@ class Observation:
     columns: list = field(default_factory=list)
     sample: list = field(default_factory=list)
     note: str = ""
+    judgment: object = None
 
     def summary(self):
         if not self.ok:
@@ -362,9 +376,11 @@ class Observation:
 class Explorer:
     """Apply actions to a plan and observe their effect on the graph."""
 
-    def __init__(self, kg, sample_size=5):
+    def __init__(self, kg, sample_size=5, kernel=None):
         self.kg = kg
         self.sample_size = sample_size
+        self.goal = None
+        self.rejected = 0
         self.linker = linker_for(kg)
         known = {prefix for prefix, _namespace in kg.vocabulary["prefixes"]}
         self.prefixes = list(kg.vocabulary["prefixes"]) + [
@@ -374,6 +390,7 @@ class Explorer:
         self.plans = [Plan()]
         self.counts = [None]
         self.history = []
+        self.kernel = kernel(self) if callable(kernel) else kernel
 
     @property
     def plan(self):
@@ -385,7 +402,9 @@ class Explorer:
 
     def run(self, action):
         """Apply one action: commit plan actions, answer graph reads."""
-        if isinstance(action, Undo):
+        if isinstance(action, State):
+            observation = self.state_goal(action)
+        elif isinstance(action, Undo):
             observation = self.undo()
         elif action.reads_graph:
             observation = self.read(action)
@@ -405,6 +424,16 @@ class Explorer:
             self.counts.append(observation.count)
         return observation
 
+    def state_goal(self, action):
+        from hermes.kernel import parse_goal
+
+        try:
+            self.goal = parse_goal(action.to_dict())
+        except ValueError as exc:
+            return Observation(str(action), ok=False, error=str(exc))
+        judgment = self.kernel.check(self.plan, self.goal) if self.kernel else None
+        return Observation(str(action), note=f"goal: {self.goal.describe()}", judgment=judgment)
+
     def undo(self):
         if len(self.plans) > 1:
             self.plans.pop()
@@ -412,9 +441,15 @@ class Explorer:
         return self.observe(self.plan, "undo")
 
     def observe(self, plan, label="", previous=None):
+        judgment = self.kernel.check(plan, self.goal) if self.kernel else None
         if plan.empty:
-            return Observation(label, ok=False, error="the plan has no triple pattern yet")
+            return Observation(label, ok=False, error="the plan has no triple pattern yet",
+                               judgment=judgment)
         sparql = render(plan, self.header)
+        if judgment is not None and not judgment.ok:
+            self.rejected += 1
+            return Observation(label, sparql, ok=False,
+                               error="kernel: " + "; ".join(judgment.errors), judgment=judgment)
         try:
             prepareQuery(sparql)
         except Exception as exc:
@@ -422,7 +457,8 @@ class Explorer:
         try:
             if plan.form == "ASK":
                 answer = bool(self.kg.query(sparql).get("boolean"))
-                return Observation(label, sparql, count=int(answer), note=f"ASK is {answer}")
+                return Observation(label, sparql, count=int(answer), note=f"ASK is {answer}",
+                                   judgment=judgment)
             inner = render(plan)
             counted = self.kg.query(
                 f"{self.header}SELECT (COUNT(*) AS ?hermes_n) WHERE {{ {{ {inner} }} }}"
@@ -438,8 +474,10 @@ class Explorer:
             {f"?{name}": self.short(row[name]["value"]) for name in columns if name in row}
             for row in sampled["results"]["bindings"]
         ]
+        if judgment is not None and self.goal and not self.goal.many and count > 1:
+            judgment.goals.append(f"⊢ one answer, but the plan has {count} solutions")
         return Observation(label, sparql, count=count, previous=previous,
-                           columns=columns, sample=sample)
+                           columns=columns, sample=sample, judgment=judgment)
 
     def read(self, action):
         if isinstance(action, Lookup):
