@@ -26,7 +26,7 @@ import modal
 
 ROOT = Path(__file__).resolve().parent.parent
 KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "TOGETHER_API_KEY", "HF_TOKEN",
-        "HERMES_LLM_API_KEY"]
+        "HERMES_LLM_API_KEY", "MODAL_PROXY_TOKEN", "HERMES_VLLM_URL"]
 
 image = (
     modal.Image.debian_slim(python_version="3.11")

@@ -131,6 +131,9 @@ PROVIDERS = {
     "huggingface": ("https://router.huggingface.co/v1", "HF_TOKEN"),
     # A server you run, such as vLLM on Modal (deploy/modal_vllm.py): give base_url.
     "vllm": (None, "HERMES_LLM_API_KEY"),
+    # Modal Shared Endpoints (billed per token): give the endpoint's base_url; the key is
+    # "<token id>.<token secret>" from `modal workspace proxy-tokens create`.
+    "modal": (None, "MODAL_PROXY_TOKEN"),
 }
 
 
