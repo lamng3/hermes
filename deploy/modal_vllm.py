@@ -40,8 +40,11 @@ SETTINGS = {
 MODEL = SETTINGS["HERMES_MODEL"]
 PORT = 8000
 
+# A CUDA development image: vLLM's FlashInfer kernels compile at startup and
+# need nvcc, which slim images lack.
 image = (
-    modal.Image.debian_slim(python_version="3.12")
+    modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu22.04", add_python="3.12")
+    .entrypoint([])
     .uv_pip_install("vllm==0.29.0", "huggingface_hub[hf_transfer]")
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1", **SETTINGS})
 )
