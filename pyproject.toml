@@ -27,6 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 figures = ["matplotlib>=3.8"]
+modal = ["modal>=1.0"]
 
 [project.scripts]
 hermes = "hermes.cli:main"

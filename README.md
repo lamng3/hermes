@@ -84,11 +84,13 @@ result = ask("Which cities hosted the Winter Olympics?", kg, Context(text="...")
 print(result["sparql"])
 ```
 
-Models: a local [Ollama](https://ollama.com) model by default (`HERMES_OLLAMA_MODEL`,
-`HERMES_OLLAMA_BASE_URL`), or any OpenAI-compatible API with
-`HERMES_LLM_PROVIDER=openai`, `HERMES_LLM_API_KEY`, `HERMES_LLM_BASE_URL` and
-`HERMES_LLM_MODEL`. Experiment configs set the model explicitly and cache
-every completion under `.cache/llm`, so reruns replay the same outputs.
+Models: a local [Ollama](https://ollama.com) model by default, hosted APIs
+(`provider: openai`, `anthropic`, `huggingface`, `together`, each reading its
+usual key variable), or any Hugging Face model on a Modal GPU through
+`deploy/modal_vllm.py` (`provider: vllm`). Every completion is cached under
+`.cache/llm`, so reruns replay the same outputs. Long sweeps can run on a
+machine over SSH or on Modal, and every run bounds its time and memory; see
+[experiments/README.md](experiments/README.md#where-to-run).
 
 ## SPARQL algebra as actions
 
