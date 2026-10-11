@@ -1,0 +1,5 @@
+# Keep GitHub's language statistics about the code: the paper (and its
+# vendored ACM template) is documentation, and data/ is generated.
+paper/** linguist-documentation
+data/** linguist-generated
+results/** linguist-generated
