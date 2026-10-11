@@ -1,6 +1,6 @@
 # Hermes: Natural Language to SPARQL over Ontologies
 
-**Lam Nguyen** · [Code](https://github.com/lamng3/hermes) · [Documentation](https://lamng3.github.io/hermes-docs/) · [Leaderboard](results/LEADERBOARD.md) · [Paper outline](paper/README.md)
+**Lam Nguyen** · [Code](https://github.com/lamng3/hermes) · [Documentation](https://lamng3.github.io/hermes-docs/) · [Leaderboard](results/LEADERBOARD.md) · [Paper](paper/hermes.pdf)
 
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 
@@ -46,7 +46,7 @@ data/            normalized benchmarks and the graphs they run on (see data/READ
 configs/         one YAML file per experiment: benchmark x system x model
 experiments/     the protocol and the script that reproduces every result
 results/         run outputs, official peer scores, and LEADERBOARD.md
-paper/           the paper outline
+paper/           VLDB-format paper (`hermes.tex`, built PDF)
 tests/           offline tests; no model or network needed
 ```
 
