@@ -8,35 +8,38 @@ Official implementation of the Hermes paper.
 
 ## Abstract
 
-Hermes carries a question across to the graph. Named for the Greek messenger
-and interpreter, it translates natural-language questions into SPARQL over
-ontologies and knowledge graphs. Existing methods
-are reimplemented as interchangeable *systems* behind one interface,
-benchmarks are converted into one normalized format, and every experiment is
-a config whose predictions, metrics and provenance are kept under `results/`.
-On top of this foundation we study NL-to-SPARQL as planning over the SPARQL
-algebra: a query is built one operator at a time, and execution on the graph
-after each operator tells the planner what that operator did, the way a query
-optimizer costs a rewrite before taking it. We evaluate on the Text2SPARQL
-challenge and on QALD, with a scorer that reproduces the official
-Text2SPARQL'26 numbers exactly, so new systems are compared with existing
-ones and with the published entries on the same footing.
+Translating natural-language questions into SPARQL lets users query knowledge
+graphs without learning their schema. Large language models now write
+plausible SPARQL, but they write the whole query at once: a query that fails
+to parse, joins values of incompatible types, or returns nothing is detected
+only after it is complete, and the repair is another guess. Hermes is a
+query-planning agent that builds a SPARQL query one operator of the SPARQL
+algebra at a time, over a typed formalization of the language. The RDF schema
+gives every query variable a type, and a verifier checks each step before it
+runs. After each step, execution on the graph tells the planner what that
+operator did, the way a query optimizer estimates a rewrite before taking it.
+A plan is accepted only when it is well typed and meets a goal stated from the
+question.
 
 ## Contributions
 
-1. **SPARQL algebra as actions.** Operators of the SPARQL 1.1 algebra as
-   symbolic actions, with an explorer that reports cardinality, deltas,
-   samples and errors after every step (`hermes.algebra`).
-2. **One interface for methods.** Prompt-only generation, UniQGen
-   (Chase & Backchase, [arXiv:2605.00845](https://arxiv.org/abs/2605.00845))
-   and an algebra agent run as swappable systems over local files or remote
-   endpoints.
-3. **Normalized benchmarks.** Text2SPARQL CK25, CK26, DB25, DB26, QALD-10 and
-   QALD-9-plus in one format, with pinned sources, licenses and documented
-   caveats (`data/`).
-4. **Comparable evaluation.** The official Text2SPARQL metrics reproduced on
-   all 5,024 published scores, plus a strict variant and a reproducible
-   subset (`hermes.evaluation`, `experiments/check_scorer.py`).
+1. **A typed SPARQL algebra.** Query plans are terms of the SPARQL 1.1
+   algebra. The RDF schema induces a type for every variable, and
+   well-formedness and typing rules decide, without evaluating a plan,
+   whether it is valid (`hermes.kernel`).
+2. **Verified query planning.** Actions are algebra operators; after each
+   one the planner observes the number of solutions, how it changed, a sample
+   of rows, and any error. A plan is accepted only when it is valid and
+   satisfies a goal derived from the question (`hermes.algebra`).
+3. **The Hermes planner.** A verifier rejects ill-typed steps before they
+   reach the graph store, and an LLM planner drives it over local RDF files
+   or remote SPARQL endpoints (`prover`, `algebra-agent`).
+4. **A reproducible evaluation.** Six benchmarks in one normalized format and
+   a scorer that reproduces all 5,024 published Text2SPARQL 2026 scores, with
+   strict and reproducible-subset variants (`hermes.evaluation`, `data/`).
+
+Preliminary results are in the [paper](paper/hermes.pdf) and the
+[leaderboard](results/LEADERBOARD.md).
 
 Install name: `hermes-sparql`. Import name: `hermes`.
 
@@ -59,16 +62,16 @@ git clone https://github.com/lamng3/hermes.git
 cd hermes
 pip install -e ".[dev]"
 hermes data fetch ck26 db26          # download and normalize benchmarks
-hermes run configs/ck26/training-free.yaml
+hermes run configs/ck26/prover.yaml
 hermes report                        # leaderboard with official peer scores
 ```
 
 One question at a time:
 
 ```bash
-hermes generate --graph corporate --question "Who is Heinrich Hoch's manager?" --system algebra-agent
-hermes generate --ontology GeoOutage.ttl --question "Which counties have the most outages?"
-hermes generate --endpoint https://dbpedia.org/sparql --question "Where was Keanu Reeves born?"
+hermes generate --graph corporate --system prover --question "Who is Heinrich Hoch's manager?"
+hermes generate --ontology onto.ttl --system prover --question "Which cities hosted the Winter Olympics?"
+hermes generate --endpoint https://dbpedia.org/sparql --system algebra-agent --question "Where was Keanu Reeves born?"
 ```
 
 From Python:
@@ -77,7 +80,7 @@ From Python:
 from hermes import Context, KnowledgeGraph, ask
 
 kg = KnowledgeGraph.from_files("onto.ttl", "data.ttl")      # or KnowledgeGraph.from_endpoint(url)
-result = ask("Which counties have the most outages?", kg, Context(text="..."), system="uniqgen")
+result = ask("Which cities hosted the Winter Olympics?", kg, Context(text="..."), system="prover")
 print(result["sparql"])
 ```
 
@@ -86,31 +89,6 @@ Models: a local [Ollama](https://ollama.com) model by default (`HERMES_OLLAMA_MO
 `HERMES_LLM_PROVIDER=openai`, `HERMES_LLM_API_KEY`, `HERMES_LLM_BASE_URL` and
 `HERMES_LLM_MODEL`. Experiment configs set the model explicitly and cache
 every completion under `.cache/llm`, so reruns replay the same outputs.
-
-## Systems
-
-A system is any callable `(question, kg, context) -> {"sparql": ...}`. `kg` is
-a `KnowledgeGraph`: a store to run queries on and a vocabulary to prompt with.
-
-| system | idea | LLM calls |
-|---|---|---|
-| `training-free` | one prompted draft from the vocabulary, fixed stages, one parse repair | 1-2 |
-| `uniqgen` | UniQGen (Wang et al., [arXiv:2605.00845](https://arxiv.org/abs/2605.00845)): constraint table, then Chase & Backchase beam search against reference answers | 2 |
-| `algebra-agent` | an LLM applies SPARQL algebra operators one at a time and reads the effect of each | up to 15 |
-
-Register your own with a decorator, or from another package with an entry
-point in the `hermes.systems` group:
-
-```python
-import hermes
-
-@hermes.systems.register("my-system")
-class MySystem:
-    def __init__(self, llm=None, depth=3):      # config `params` arrive here
-        self.llm = llm
-    def __call__(self, question, kg, context):
-        return {"sparql": "SELECT * WHERE { ?s ?p ?o } LIMIT 1"}
-```
 
 ## SPARQL algebra as actions
 
@@ -129,15 +107,60 @@ happened, the way an optimizer costs a rewrite before taking it:
 ```
 
 `preview(action)` answers "what if?" without committing, and `undo` steps
-back. Any policy can drive it: an LLM (`algebra-agent`), a search, or a
-learned planner. UniQGen's Chase and Backchase are, in these terms, a beam
-search over `remove` and `triple` actions.
+back. Any policy can drive it: an LLM planner, a search, or a learned
+planner. Existing generators are policies in the same space; constraint-guided
+search with Chase and Backchase, for example, is a beam search over `remove`
+and `triple` actions.
+
+## The verifier
+
+`hermes.kernel` checks a plan against the RDF schema and a stated goal before
+anything runs. `?x a C` gives `?x : C`, and `?x p ?y` gives `?x` the domain of
+`p` and `?y` its range, compared up to `rdfs:subClassOf`. Unknown terms,
+literals where entities are required, unbound variables, and ungrouped
+projections are rejected with a message the planner can act on:
+
+```
+{"op": "triple", "pattern": "?c ex:hosts ?g"}
+  -> rejected: kernel: unknown property ex:hosts (did you mean ex:hosted?)
+```
+
+The planner first states a goal, the shape of the answer the question asks
+for (an entity of a class, a number, a yes/no, one or many), and `finish` is
+refused while the plan does not meet it. The goal is written by the model
+from the question, so the verifier guarantees that a plan has the shape its
+goal asks for, not that the goal is the question.
+
+## Systems
+
+A system is any callable `(question, kg, context) -> {"sparql": ...}`. `kg` is
+a `KnowledgeGraph`: a store to run queries on and a vocabulary to prompt with.
+
+| system | what it is | LLM calls |
+|---|---|---|
+| `prover` | **Hermes**: the planner with the verifier and goals | up to 15 |
+| `algebra-agent` | Hermes without the verifier: planning with execution feedback only | up to 15 |
+| `training-free` | baseline: one prompted draft from the vocabulary, one parse repair | 1-2 |
+| `uniqgen` | baseline: UniQGen (Wang et al., [arXiv:2605.00845](https://arxiv.org/abs/2605.00845)), constraint table then Chase & Backchase | 2 |
+
+Register your own with a decorator, or from another package with an entry
+point in the `hermes.systems` group:
+
+```python
+import hermes
+
+@hermes.systems.register("my-system")
+class MySystem:
+    def __init__(self, llm=None, depth=3):      # config `params` arrive here
+        self.llm = llm
+    def __call__(self, question, kg, context):
+        return {"sparql": "SELECT * WHERE { ?s ?p ?o } LIMIT 1"}
+```
 
 ## Graph stores
 
 Systems and the evaluator only call `store.query(sparql)`, which returns
-SPARQL 1.1 JSON results. That closes the gap between ontology-only and
-execution-guided methods: the same system runs on
+SPARQL 1.1 JSON results, so the same planner runs on
 
 - `OxigraphStore`: local RDF files in [Oxigraph](https://github.com/oxigraph/oxigraph), the default;
 - `LocalStore`: local RDF files in rdflib (`engine: rdflib`);
@@ -163,7 +186,7 @@ on the items whose gold query reproduces on our graph store. See
 [data/README.md](data/README.md) for formats, sources, licenses and caveats,
 and [experiments/README.md](experiments/README.md) for the protocol.
 
-`hermes serve --config configs/ck26/algebra-agent.yaml` exposes any system
+`hermes serve --config configs/ck26/prover.yaml` exposes any system
 behind the Text2SPARQL challenge API, so it can be submitted or scored with
 the official client.
 
