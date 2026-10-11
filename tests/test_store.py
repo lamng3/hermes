@@ -79,6 +79,28 @@ def test_cached_llm_records_usage_and_replays_for_free(tmp_path):
     assert cached.usage == {"calls": 1, "input_tokens": 10, "output_tokens": 3, "seconds": 0.5}
     assert (cached.calls, cached.hits) == (2, 1)
 
+    fresh = CachedLLM(Counting(), tmp_path, refresh=True)
+    fresh.complete("q")
+    assert (fresh.usage["calls"], fresh.hits) == (1, 0)
+
+
+def test_llm_requests_retry_timeouts(monkeypatch):
+    import httpx
+
+    from hermes import llm
+
+    monkeypatch.setattr(llm.time, "sleep", lambda seconds: None)
+    attempts = []
+
+    def send():
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise httpx.ReadTimeout("slow")
+        return httpx.Response(200)
+
+    assert llm._with_retries(send).status_code == 200
+    assert len(attempts) == 3
+
 
 def test_endpoint_store_refuses_huge_results():
     class Handler(BaseHTTPRequestHandler):
