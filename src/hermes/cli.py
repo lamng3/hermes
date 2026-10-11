@@ -1,6 +1,7 @@
 """Command line: generate, systems, data, run, report, serve."""
 
 import argparse
+import sys
 import json
 from pathlib import Path
 
@@ -40,6 +41,13 @@ def main(argv=None):
     run.add_argument("--resume", help="Run id to resume.")
     run.add_argument("--results", default="results")
 
+    sweep = commands.add_parser("sweep", help="Run a grid of benchmarks, systems, and models.")
+    sweep.add_argument("file", help="Sweep YAML under configs/sweeps/.")
+    sweep.add_argument("--only", help="Run only configs whose name contains this text.")
+    sweep.add_argument("--list", action="store_true", help="List the runs and exit.")
+    sweep.add_argument("--limit", type=int, help="Only the first N items of each run.")
+    sweep.add_argument("--results", default="results")
+
     report = commands.add_parser("report", help="Leaderboard of runs and official peers.")
     report.add_argument("--benchmark")
     report.add_argument("--results", default="results")
@@ -73,6 +81,22 @@ def main(argv=None):
             if args.limit:
                 config["limit"] = args.limit
             Run(config, args.results, args.resume, observers=[Progress()]).execute()
+    elif args.command == "sweep":
+        from hermes.experiments import Progress, Run, expand_sweep, latest_unfinished
+
+        configs = [c for c in expand_sweep(args.file) if not args.only or args.only in c["name"]]
+        for config in configs:
+            if args.limit:
+                config["limit"] = args.limit
+            resume = latest_unfinished(args.results, config)
+            print(f"{config['benchmark']}/{config['name']}"
+                  + (f" (resuming {resume})" if resume else ""))
+            if args.list:
+                continue
+            try:
+                Run(config, args.results, resume, observers=[Progress()]).execute()
+            except Exception as exc:  # one failed config must not stop the sweep
+                print(f"  failed: {type(exc).__name__}: {exc}", file=sys.stderr)
     elif args.command == "report":
         from hermes.experiments import leaderboard
 

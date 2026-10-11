@@ -97,3 +97,44 @@ def test_endpoint_store_refuses_huge_results():
     with pytest.raises(QueryError, match="larger than"):
         store.query("SELECT * WHERE { ?s ?p ?o }")
     server.server_close()
+
+
+def test_timeout_store_kills_slow_queries_and_recovers():
+    import time
+
+    from hermes.store import TimeoutStore
+
+    store = TimeoutStore([FIXTURES / "olympics.ttl"], timeout=2)
+    assert values(store.query(QUERY))[0].endswith("Atlanta")
+    slow = """SELECT (COUNT(*) AS ?n) WHERE { ?a ?b ?c . ?d ?e ?f . ?g ?h ?i . ?j ?k ?l }"""
+    started = time.time()
+    with pytest.raises(QueryError, match="timed out"):
+        store.query(slow)
+    assert time.time() - started < 10
+    assert len(values(store.query(QUERY))) == 7
+    store.close()
+
+
+def test_cache_is_bounded():
+    store = CachedStore(OxigraphStore(FIXTURES / "olympics.ttl"), max_entries=2, max_rows=5)
+    for query in [QUERY, QUERY + " LIMIT 1", QUERY + " LIMIT 2", QUERY + " LIMIT 3"]:
+        store.query(query)
+    assert len(store._cache) == 2
+    assert QUERY not in store._cache  # 7 rows: over max_rows, never kept
+
+
+def test_provider_presets(monkeypatch):
+    from hermes import llm
+
+    monkeypatch.setenv("OPENAI_API_KEY", "k1")
+    monkeypatch.delenv("HERMES_LLM_BASE_URL", raising=False)
+    client = llm.create(provider="openai", model="gpt-4o-mini")
+    assert (client.base_url, client.api_key) == ("https://api.openai.com/v1", "k1")
+    hf = llm.create(provider="huggingface", model="Qwen/Qwen2.5-7B-Instruct")
+    assert hf.base_url == "https://router.huggingface.co/v1"
+    server = llm.create(provider="vllm", model="m", base_url="https://x.modal.run/v1")
+    assert server.base_url == "https://x.modal.run/v1"
+    with pytest.raises(ValueError, match="base_url"):
+        llm.create(provider="vllm", model="m")
+    with pytest.raises(ValueError, match="Unknown"):
+        llm.create(provider="nope")
