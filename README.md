@@ -1,61 +1,27 @@
-# Hermes: Verified Query Planning over the SPARQL Algebra with Language Agents
+<div align="center">
 
-Official implementation of the Hermes paper.
+# 🪽 Hermes
 
-**Lam Nguyen**, Case Western Reserve University · [Code](https://github.com/lamng3/hermes) · [Documentation](https://lamng3.github.io/hermes-docs/) · [Leaderboard](results/LEADERBOARD.md) · [Paper](paper/hermes.pdf)
+**Verified Query Planning over the SPARQL Algebra with Language Agents**
 
-[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![Paper](https://img.shields.io/badge/paper-PDF-b31b1b)](paper/hermes.pdf)
+[![Docs](https://img.shields.io/badge/docs-hermes--docs-8b5cf6)](https://lamng3.github.io/hermes-docs/)
+[![Leaderboard](https://img.shields.io/badge/leaderboard-CK26%20%C2%B7%20DB26-f59e0b)](results/LEADERBOARD.md)
+[![Python](https://img.shields.io/badge/python-3.11%2B-3b82f6)](pyproject.toml)
+[![License: CC BY 4.0](https://img.shields.io/badge/license-CC%20BY%204.0-green.svg)](https://creativecommons.org/licenses/by/4.0/)
 
-## Abstract
+[⚡ Quick start](#-quick-start) · [✨ What it is](#-what-it-is) · [📊 Results](#-results) · [🔧 Usage](#-usage) · [📝 Citation](#-citation)
 
-Translating natural-language questions into SPARQL lets users query knowledge
-graphs without learning their schema. Large language models now write
-plausible SPARQL, but they write the whole query at once: a query that fails
-to parse, joins values of incompatible types, or returns nothing is detected
-only after it is complete, and the repair is another guess. Hermes is a
-query-planning agent that builds a SPARQL query one operator of the SPARQL
-algebra at a time, over a typed formalization of the language. The RDF schema
-gives every query variable a type, and a verifier checks each step before it
-runs. After each step, execution on the graph tells the planner what that
-operator did, the way a query optimizer estimates a rewrite before taking it.
-A plan is accepted only when it is well typed and meets a goal stated from the
-question.
+</div>
 
-## Contributions
+<p align="center"><b>Lam Nguyen</b><br><sub>Case Western Reserve University</sub></p>
 
-1. **A typed SPARQL algebra.** Query plans are terms of the SPARQL 1.1
-   algebra. The RDF schema induces a type for every variable, and
-   well-formedness and typing rules decide, without evaluating a plan,
-   whether it is valid (`hermes.kernel`).
-2. **Verified query planning.** Actions are algebra operators; after each
-   one the planner observes the number of solutions, how it changed, a sample
-   of rows, and any error. A plan is accepted only when it is valid and
-   satisfies a goal derived from the question (`hermes.algebra`).
-3. **The Hermes planner.** A verifier rejects ill-typed steps before they
-   reach the graph store, and an LLM planner drives it over local RDF files
-   or remote SPARQL endpoints (`prover`, `algebra-agent`).
-4. **A reproducible evaluation.** Six benchmarks in one normalized format and
-   a scorer that reproduces all 5,024 published Text2SPARQL 2026 scores, with
-   strict and reproducible-subset variants (`hermes.evaluation`, `data/`).
+> [!NOTE]
+> **Official implementation of the Hermes paper.** Results are preliminary; the
+> [paper](paper/hermes.pdf) and [leaderboard](results/LEADERBOARD.md) are updated
+> as runs finish. Install name `hermes-sparql`, import name `hermes`.
 
-Preliminary results are in the [paper](paper/hermes.pdf) and the
-[leaderboard](results/LEADERBOARD.md).
-
-Install name: `hermes-sparql`. Import name: `hermes`.
-
-## Layout
-
-```
-src/hermes/      source: stores, systems, algebra, benchmarks, evaluation
-data/            normalized benchmarks and the graphs they run on (see data/README.md)
-configs/         one YAML file per experiment: benchmark x system x model
-experiments/     the protocol and the script that reproduces every result
-results/         run outputs, official peer scores, and LEADERBOARD.md
-paper/           VLDB-format paper (`hermes.tex`, built PDF)
-tests/           offline tests; no model or network needed
-```
-
-## Quick start
+## ⚡ Quick start
 
 ```bash
 git clone https://github.com/lamng3/hermes.git
@@ -92,7 +58,68 @@ usual key variable), or any Hugging Face model on a Modal GPU through
 machine over SSH or on Modal, and every run bounds its time and memory; see
 [experiments/README.md](experiments/README.md#where-to-run).
 
-## SPARQL algebra as actions
+## ✨ What it is
+
+Translating natural-language questions into SPARQL lets users query knowledge
+graphs without learning their schema. Large language models now write
+plausible SPARQL, but they write the whole query at once: a query that fails
+to parse, joins values of incompatible types, or returns nothing is detected
+only after it is complete, and the repair is another guess. Hermes is a
+query-planning agent that builds a SPARQL query one operator of the SPARQL
+algebra at a time, over a typed formalization of the language. The RDF schema
+gives every query variable a type, and a verifier checks each step before it
+runs. After each step, execution on the graph tells the planner what that
+operator did, the way a query optimizer estimates a rewrite before taking it.
+A plan is accepted only when it is well typed and meets a goal stated from the
+question.
+
+1. **A typed SPARQL algebra.** Query plans are terms of the SPARQL 1.1
+   algebra. The RDF schema induces a type for every variable, and
+   well-formedness and typing rules decide, without evaluating a plan,
+   whether it is valid (`hermes.kernel`).
+2. **Verified query planning.** Actions are algebra operators; after each
+   one the planner observes the number of solutions, how it changed, a sample
+   of rows, and any error. A plan is accepted only when it is valid and
+   satisfies a goal derived from the question (`hermes.algebra`).
+3. **The Hermes planner.** A verifier rejects ill-typed steps before they
+   reach the graph store, and an LLM planner drives it over local RDF files
+   or remote SPARQL endpoints (`prover`, `algebra-agent`).
+4. **A reproducible evaluation.** Six benchmarks in one normalized format and
+   a scorer that reproduces all 5,024 published Text2SPARQL 2026 scores, with
+   strict and reproducible-subset variants (`hermes.evaluation`, `data/`).
+
+Preliminary results are in the [paper](paper/hermes.pdf) and the
+[leaderboard](results/LEADERBOARD.md).
+
+Install name: `hermes-sparql`. Import name: `hermes`.
+
+## 📊 Results
+
+<div align="center">
+
+| System | Qwen3-4B | Qwen3-8B | Qwen3-14B |
+|:--|:--:|:--:|:--:|
+| training-free <sub>one draft, one repair</sub> | 0.000 | 0.067 | 0.089 |
+| uniqgen <sub>constraint table, Chase & Backchase</sub> | 0.084 | 0.121 | 0.197 |
+| algebra-agent <sub>Hermes without the verifier</sub> | **0.103** | **0.178** | 0.231 |
+| **prover** <sub>Hermes</sub> | 0.070 | 0.158 | **0.282** |
+
+<sub>Official Text2SPARQL F1 on CK26 (100 items, English and German). Thinking off, temperature 0, up to 15 planning steps · `results/reports/2026-10-11-ck26-qwen3-sizes.md`, from the run folders under `results/ck26/`</sub>
+
+</div>
+
+Hermes gains the most from model size (0.070 to 0.282) and is the best system
+at 14B. At 4B and 8B, planning without the verifier scores higher, even though
+Hermes leaves fewer items without a runnable query (35 against 57 at 4B, 2
+against 15 at 8B). Per-run
+precision, recall, strict and reproducible-subset scores, cost, and the
+official peer submissions are in the [report](results/reports/2026-10-11-ck26-qwen3-sizes.md)
+and the [leaderboard](results/LEADERBOARD.md).
+
+## 🔧 Usage
+
+<details>
+<summary><b>SPARQL algebra as actions</b></summary>
 
 `hermes.algebra` treats a query as a logical plan built one operator at a
 time: `triple` (BGP and join), `filter`, `optional` (left join), `union`,
@@ -114,7 +141,10 @@ planner. Existing generators are policies in the same space; constraint-guided
 search with Chase and Backchase, for example, is a beam search over `remove`
 and `triple` actions.
 
-## The verifier
+</details>
+
+<details>
+<summary><b>The verifier</b></summary>
 
 `hermes.kernel` checks a plan against the RDF schema and a stated goal before
 anything runs. `?x a C` gives `?x : C`, and `?x p ?y` gives `?x` the domain of
@@ -133,7 +163,10 @@ refused while the plan does not meet it. The goal is written by the model
 from the question, so the verifier guarantees that a plan has the shape its
 goal asks for, not that the goal is the question.
 
-## Systems
+</details>
+
+<details>
+<summary><b>Systems</b></summary>
 
 A system is any callable `(question, kg, context) -> {"sparql": ...}`. `kg` is
 a `KnowledgeGraph`: a store to run queries on and a vocabulary to prompt with.
@@ -159,7 +192,10 @@ class MySystem:
         return {"sparql": "SELECT * WHERE { ?s ?p ?o } LIMIT 1"}
 ```
 
-## Graph stores
+</details>
+
+<details>
+<summary><b>Graph stores</b></summary>
 
 Systems and the evaluator only call `store.query(sparql)`, which returns
 SPARQL 1.1 JSON results, so the same planner runs on
@@ -170,7 +206,10 @@ SPARQL 1.1 JSON results, so the same planner runs on
 
 `CachedStore` wraps them all, memoizing results and counting executions.
 
-## Benchmarks and evaluation
+</details>
+
+<details>
+<summary><b>Benchmarks and evaluation</b></summary>
 
 | benchmark | graph | questions | languages |
 |---|---|---|---|
@@ -192,7 +231,10 @@ and [experiments/README.md](experiments/README.md) for the protocol.
 behind the Text2SPARQL challenge API, so it can be submitted or scored with
 the official client.
 
-## Design
+</details>
+
+<details>
+<summary><b>Design</b></summary>
 
 The structure follows a few standard patterns, so methods plug in without
 changes elsewhere:
@@ -207,7 +249,24 @@ changes elsewhere:
 | Command, builder | algebra actions and `render(plan)` |
 | Template method, observer | `Run.evaluate` (predict, execute, score), run observers |
 
-## Citation
+</details>
+
+<details>
+<summary><b>Repository layout</b></summary>
+
+```
+src/hermes/      source: stores, systems, algebra, benchmarks, evaluation
+data/            normalized benchmarks and the graphs they run on (see data/README.md)
+configs/         one YAML file per experiment: benchmark x system x model
+experiments/     the protocol and the script that reproduces every result
+results/         run outputs, official peer scores, and LEADERBOARD.md
+paper/           VLDB-format paper (`hermes.tex`, built PDF)
+tests/           offline tests; no model or network needed
+```
+
+</details>
+
+## 📝 Citation
 
 ```bibtex
 @misc{nguyen2026hermes,
