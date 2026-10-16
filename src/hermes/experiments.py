@@ -10,7 +10,8 @@ its parameters, and the LLM. `Run` executes it:
 
 and writes results/<benchmark>/<config name>/<run id>/ with the config,
 predictions.jsonl (one row per item, with timing and errors), metrics.json
-(official and strict averages) and run.json (git commit, model, counts). An
+(official and strict averages) and run.json (git commit, model, counts, and
+cost: dollars for priced models, GPU time for local ones, see costs.py). An
 interrupted run resumes from its predictions.jsonl. Observers receive
 start/item/end events, for progress output or extra logging.
 """
@@ -29,6 +30,7 @@ from pathlib import Path
 import yaml
 
 from hermes import benchmarks, llm as llms, runtime, systems
+from hermes.costs import run_cost
 from hermes.context import Context, Example
 from hermes.evaluation import aggregate, score
 from hermes.store import QueryError
@@ -211,7 +213,9 @@ class Run:
         chosen = {item.id: records[item.id] for item in items}
         metrics = self.metrics(chosen)
         _write_json(self.directory / "metrics.json", metrics)
-        _write_json(self.directory / "run.json", self.provenance(chosen, time.time() - started))
+        provenance = self.provenance(chosen, time.time() - started)
+        provenance["cost"] = run_cost(provenance)
+        _write_json(self.directory / "run.json", provenance)
         for observer in self.observers:
             observer.on_end(self, metrics)
         return metrics
@@ -438,13 +442,14 @@ def leaderboard(results="results", benchmark=None):
     for bench_dir in sorted(p for p in root.iterdir() if p.is_dir() and p.name != "peers"):
         if benchmark and bench_dir.name != benchmark:
             continue
-        rows = []
+        rows, cost_rows = [], []
         for config_dir in sorted(p for p in bench_dir.iterdir() if p.is_dir()):
             runs = sorted(p for p in config_dir.iterdir() if (p / "metrics.json").exists())
             if not runs:
                 continue
             metrics = json.loads((runs[-1] / "metrics.json").read_text())
             run = json.loads((runs[-1] / "run.json").read_text())
+            cost_rows.append((config_dir.name, run))
             rows.append((config_dir.name, run.get("model", ""), metrics["items"],
                          metrics["official"]["average"], metrics["strict"]["average"]))
         peers_path = root / "peers" / f"{bench_dir.name}.json"
@@ -462,4 +467,20 @@ def leaderboard(results="results", benchmark=None):
                 f"| {off['set_P']:.3f} | {off['set_recall']:.3f} | {strict_f} |"
             )
         lines.append("")
+        costs = [(name, run) for name, run in cost_rows]
+        if costs:
+            lines.append(f"### {bench_dir.name}: cost\n")
+            lines.append("| system | model | provider | LLM calls/item | input tokens/item | output tokens/item "
+                         "| LLM s/item | cost (USD) | cost/item (USD) |")
+            lines.append("|---|---|---|---|---|---|---|---|---|")
+            for name, run in sorted(costs):
+                c = run.get("cost") or run_cost(run)
+                usd = f"{c['cost_usd']:.4f}" if c["cost_usd"] is not None else c["cost_basis"]
+                per = f"{c['cost_usd_per_item']:.5f}" if c["cost_usd_per_item"] is not None else ""
+                lines.append(
+                    f"| {name} | {run.get('model', '')} | {run.get('provider', '')} | {c['calls_per_item']} "
+                    f"| {c['input_tokens_per_item']:,} | {c['output_tokens_per_item']:,} "
+                    f"| {c['llm_seconds_per_item']} | {usd} | {per} |"
+                )
+            lines.append("")
     return "\n".join(lines)

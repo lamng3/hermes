@@ -278,3 +278,19 @@ def test_deadlines_stop_items_in_worker_threads(data, tmp_path):
     metrics = Run(config, results=tmp_path / "r", llm=ScriptedLLM([])).execute()
     assert time.time() - started < 4
     assert metrics["errors"] == 3
+
+
+def test_run_cost_prices_hosted_models_and_times_local_ones(monkeypatch):
+    from hermes.costs import run_cost
+
+    hosted = {"model": "claude-opus-5-5", "provider": "anthropic", "items": 10, "llm_model_calls": 20,
+              "input_tokens": 100_000, "output_tokens": 5_000, "llm_seconds": 40.0}
+    cost = run_cost(hosted)
+    assert cost["cost_usd"] == 0.5 and cost["cost_usd_per_item"] == 0.05 and cost["calls_per_item"] == 2.0
+    local = {"model": "Qwen/Qwen3-14B", "provider": "vllm", "items": 100, "wall_seconds": 360.0,
+             "input_tokens": 1_000, "output_tokens": 10}
+    assert run_cost(local)["cost_usd"] is None and run_cost(local)["cost_basis"] == "local, 6.0 GPU-min"
+    monkeypatch.setenv("HERMES_GPU_HOUR_USD", "2")
+    assert run_cost(local)["cost_usd"] == 0.2
+    monkeypatch.setenv("HERMES_PRICES", '{"qwen3-14b": [0.1, 0.3]}')
+    assert run_cost(local)["cost_basis"] == "list price"
