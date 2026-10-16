@@ -108,6 +108,26 @@ Install name: `hermes-sparql`. Import name: `hermes`.
 
 </div>
 
+What each system spends, per item (Qwen3-14B; the 4B and 8B runs are in the
+[leaderboard](results/LEADERBOARD.md)):
+
+<div align="center">
+
+| System | LLM calls | Input tokens | Output tokens | Model seconds | GPU minutes, 100 items <sub>4B / 8B / 14B</sub> |
+|:--|--:|--:|--:|--:|:--:|
+| training-free | 1.06 | 734 | 113 | 5.1 | 1.1 / 1.8 / 3.0 |
+| uniqgen | 1.99 | 3,916 | 273 | 18.5 | 1.6 / 2.8 / 2.7 |
+| algebra-agent | 14.24 | 29,454 | 280 | 21.8 | 3.6 / 2.1 / 2.5 |
+| **prover** | 12.65 | 28,559 | 245 | 22.6 | 1.0 / 2.5 / 2.6 |
+
+<sub>Local vLLM: no per-token price, so cost is GPU time (wall clock; model seconds add up calls made in parallel). Set `HERMES_GPU_HOUR_USD` to put a dollar figure on it, or run a priced model; `hermes.costs`</sub>
+
+</div>
+
+The agents read about 40 times the input of a one-shot draft: each planning
+step resends the vocabulary and the trace so far. Output stays small, so input
+tokens, and prompt caching for them, decide what a hosted run would cost.
+
 Hermes gains the most from model size (0.070 to 0.282) and is the best system
 at 14B. At 4B and 8B, planning without the verifier scores higher, even though
 Hermes leaves fewer items without a runnable query (35 against 57 at 4B, 2
