@@ -5,7 +5,7 @@
 **Verified Query Planning over the SPARQL Algebra with Language Agents**
 
 [![Paper](https://img.shields.io/badge/paper-PDF-b31b1b)](paper/hermes.pdf)
-[![Docs](https://img.shields.io/badge/docs-hermes--docs-8b5cf6)](https://lamng3.github.io/hermes-docs/)
+[![Docs](https://img.shields.io/badge/docs-hermes--docs-8b5cf6)](https://lamng3.com/hermes/)
 [![Leaderboard](https://img.shields.io/badge/leaderboard-CK26%20%C2%B7%20DB26-f59e0b)](results/LEADERBOARD.md)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3b82f6)](pyproject.toml)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC%20BY%204.0-green.svg)](https://creativecommons.org/licenses/by/4.0/)
