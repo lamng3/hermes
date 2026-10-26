@@ -25,6 +25,15 @@ def main(argv=None):
     generate.add_argument("--system", default="training-free",
                           help="Registered system to run (default: training-free).")
 
+    plan = commands.add_parser("plan", help="Translate a SPARQL query to relational algebra, "
+                                            "optimize it with the graph's statistics, and run it.")
+    where = plan.add_mutually_exclusive_group(required=True)
+    where.add_argument("--graph", help="Graph name from data/graphs.yaml.")
+    where.add_argument("--files", nargs="+", help="RDF files: ontology and data.")
+    plan.add_argument("--query", help="SPARQL text (or use --file).")
+    plan.add_argument("--file", help="A file holding the SPARQL query.")
+    plan.add_argument("--rows", type=int, default=20, help="Result rows to print.")
+
     commands.add_parser("systems", help="List the registered systems.")
 
     data = commands.add_parser("data", help="Benchmarks: list, fetch, verify.")
@@ -63,6 +72,8 @@ def main(argv=None):
     serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+    if args.command == "plan":
+        return _plan(args)
     if args.command == "systems":
         print("\n".join(systems.available()))
     elif args.command == "generate":
@@ -130,6 +141,51 @@ def main(argv=None):
             params["llm"] = llms.create(**config["llm"])
         start(systems.create(config["system"], **params), args.host, args.port)
     return 0
+
+
+def _plan(args):
+    from hermes import relational as ra
+
+    sparql = args.query or Path(args.file).read_text(encoding="utf-8")
+    kg = benchmarks.graph(args.graph) if args.graph else KnowledgeGraph.from_files(*args.files)
+    written, optimized, rewrites, estimate = ra.plan(sparql, kg)
+    run = ra.Executor(kg)
+    results = {}
+    for name, query in (("as written", written), ("optimized", optimized)):
+        results[name] = run(query)
+    engine = kg.query(sparql)
+    traces = {name: trace for name, (_rows, trace) in results.items()}
+
+    def notes(trace):
+        return lambda node: (f"   est {estimate(node).rows:,.1f}"
+                             + (f" · got {trace.rows[id(node)]:,}" if id(node) in trace.rows else ""))
+
+    print("As written\n" + ra.tree(written.root, written.namespaces, notes(traces["as written"])))
+    print("\nRewrites\n" + ("\n".join(f"- {line}" for line in rewrites) or "- none"))
+    print("\nOptimized\n" + ra.tree(optimized.root, optimized.namespaces,
+                                       notes(traces["optimized"])))
+    print("\n" + ra.formula(optimized.root, optimized.namespaces))
+    print(f"\n{'':22}{'as written':>12}{'optimized':>12}")
+    for label, value in (("estimated C_out", lambda q, t: f"{estimate(q.root).cost:,.0f}"),
+                         ("store queries", lambda q, t: f"{t.queries:,}"),
+                         ("rows fetched", lambda q, t: f"{t.fetched:,}"),
+                         ("intermediate rows", lambda q, t: f"{t.intermediate:,}"),
+                         ("milliseconds", lambda q, t: f"{t.seconds * 1000:,.1f}")):
+        print(f"{label:22}{value(written, traces['as written']):>12}"
+              f"{value(optimized, traces['optimized']):>12}")
+    rows = results["optimized"][0]
+    same = ra.same_answers(rows, engine, optimized)
+    print(f"\nSame answers as the engine: {'yes' if same else 'NO'}")
+    if optimized.form == "ASK":
+        print(f"Answer: {rows}")
+        return 0 if same else 1
+    print(f"{len(rows)} rows" + (f" (first {args.rows})" if len(rows) > args.rows else ""))
+    names = [str(v) for v in optimized.variables]
+    print("  ".join("?" + n for n in names))
+    for row in rows[: args.rows]:
+        print("  ".join(ra.expression(row[v], optimized.namespaces) if row.get(v) is not None
+                        else "-" for v in optimized.variables))
+    return 0 if same else 1
 
 
 def _data(args):

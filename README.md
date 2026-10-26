@@ -4,7 +4,6 @@
 
 **SPARQL as relational algebra, optimized with the knowledge graph's statistics**
 
-[![Write-up](https://img.shields.io/badge/write--up-PDF-b31b1b)](paper/hermes.pdf)
 [![Manual](https://img.shields.io/badge/docs-manual-8b5cf6)](https://lamng3.com/hermes/)
 [![Leaderboard](https://img.shields.io/badge/leaderboard-CK26%20%C2%B7%20DB26-f59e0b)](results/LEADERBOARD.md)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3b82f6)](pyproject.toml)
@@ -95,8 +94,7 @@ question.
    a scorer that reproduces all 5,024 published Text2SPARQL 2026 scores, with
    strict and reproducible-subset variants (`hermes.evaluation`, `data/`).
 
-Preliminary results are in the [write-up](paper/hermes.pdf) and the
-[leaderboard](results/LEADERBOARD.md).
+Earlier runs are in [results/archive](results/archive/).
 
 Install name: `hermes-sparql`. Import name: `hermes`.
 
@@ -288,7 +286,6 @@ data/            normalized benchmarks and the graphs they run on (see data/READ
 configs/         one YAML file per experiment: benchmark x system x model
 experiments/     the protocol and the script that reproduces every result
 results/         run outputs, official peer scores, and LEADERBOARD.md
-paper/           VLDB-format write-up (`hermes.tex`, built PDF) and research notes (`NOTES.md`)
 tests/           offline tests; no model or network needed
 ```
 
