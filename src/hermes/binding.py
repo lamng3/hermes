@@ -14,6 +14,8 @@ import difflib
 import heapq
 import math
 import re
+import threading
+import weakref
 from dataclasses import dataclass
 
 from hermes.linking import LABELS, local_name, normalize
@@ -40,7 +42,7 @@ SELECT ?term ?kind ?label WHERE {
   VALUES (?type ?kind) { (owl:Class "class") (rdfs:Class "class")
     (owl:ObjectProperty "property") (owl:DatatypeProperty "property") (rdf:Property "property") }
   ?term a ?type
-  OPTIONAL { ?term rdfs:label ?label }
+  OPTIONAL { ?term rdfs:label ?label FILTER(lang(?label) = "" || langMatches(lang(?label), "en")) }
   FILTER(isIRI(?term))
 }
 """
@@ -121,6 +123,8 @@ class Catalog:
         for iri, names in self.names[kind].items():
             best = max(similarity(phrase, name) for name in names)
             if best > 0.3:
+                # Ties go to the term whose local name agrees too: ontologies mislabel.
+                best = min(1.0, best) - 0.01 * (1 - similarity(phrase, local_name(iri)))
                 scored.append((best, iri, max(names, key=len)))
         scored.sort(key=lambda row: (-row[0], row[1]))
         found = [Candidate(self.explorer.short(iri), round(score, 3), label)
@@ -145,6 +149,19 @@ class Catalog:
         """A value the model wrote as a literal: kept first, with entities it may name."""
         found = [Candidate(_literal(text), _VALUE_SCORE, "literal")]
         return found + [c for c in self._entities(text, limit) if c.label != "literal"]
+
+
+_CATALOGS = weakref.WeakKeyDictionary()
+_CATALOGS_LOCK = threading.Lock()
+
+
+def catalog_for(kg, explorer, statistics=None):
+    """One Catalog per KnowledgeGraph: reading DBpedia's terms takes seconds."""
+    with _CATALOGS_LOCK:
+        catalog = _CATALOGS.get(kg)
+        if catalog is None:
+            catalog = _CATALOGS[kg] = Catalog(kg, explorer, statistics)
+        return catalog
 
 
 def slots(reading):
