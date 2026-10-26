@@ -158,3 +158,18 @@ def test_a_selected_variable_must_be_bound(olympics):
     refined = QueryRefiner(catalog_for(olympics), Prefixes.of(olympics))(
         "PREFIX ex: <%s> SELECT ?c ?name WHERE { ?c ex:hosted ?g }" % EX)
     assert refined.problems == ["?name is selected but no pattern binds it"]
+
+
+def test_names_every_engine_parses():
+    names = Prefixes([("prodi", "http://ld.company.org/prod-instances/")])
+    assert names.short("http://ld.company.org/prod-instances/dept-73191") == "prodi:dept-73191"
+    iri = "http://ld.company.org/prod-instances/empl-Karen.Brant%40company.org"
+    assert names.short(iri) == f"<{iri}>"
+
+
+def test_a_subquery_in_a_filter_is_explained(olympics):
+    refined = QueryRefiner(catalog_for(olympics), Prefixes.of(olympics))(
+        "PREFIX ex: <%s> SELECT ?g WHERE { ?g ex:year ?y "
+        "FILTER(?y = (SELECT MAX(?z) AS ?m FROM { ?h ex:year ?z })) }" % EX)
+    assert any("no subqueries inside FILTER" in p for p in refined.problems)
+    assert any("FROM takes a graph IRI" in p for p in refined.problems)

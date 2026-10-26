@@ -161,7 +161,14 @@ class QueryRefiner:
     def problems(self, refined):
         error = parse_error(refined.sparql)
         if error:
-            return [f"it does not parse: {error.splitlines()[0][:200]}"]
+            problems = [f"it does not parse: {error.splitlines()[0][:200]}"]
+            if re.search(r"FILTER\s*\([^{}]*\(\s*SELECT\b", refined.sparql, re.IGNORECASE):
+                problems.append("SPARQL has no subqueries inside FILTER; for the largest or "
+                                "smallest value use ORDER BY DESC(?value) LIMIT 1, or a nested "
+                                "{ SELECT (MAX(?v) AS ?max) WHERE { ... } } joined on ?max")
+            if re.search(r"\bFROM\s*\{", refined.sparql, re.IGNORECASE):
+                problems.append("FROM takes a graph IRI, not a pattern; write the pattern in WHERE")
+            return problems
         try:
             query = translate(refined.sparql)
         except UnsupportedQuery as exc:

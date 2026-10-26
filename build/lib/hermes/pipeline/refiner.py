@@ -1,8 +1,7 @@
 """The ontology refiner: the slice of the ontology a question needs.
 
-NL2KQL's schema refiner keeps the tables most similar to the question and
-all their columns. Here: the classes, properties and listed values that rank
-highest for the question, the classes of the entities it names, then the
+The classes, properties and listed values that rank highest for the
+question, the classes of the entities it names, then the
 neighbourhood that makes them usable: the properties the chosen classes'
 instances use, and the classes at both ends of the chosen properties.
 """
