@@ -1,5 +1,5 @@
-# The paper's main grid: every method under every model, on CK26 and DB26.
-# Run it all with `hermes sweep configs/sweeps/paper.yaml`, a slice with
+# The baselines' grid: every earlier system under every model, on CK26 and DB26.
+# Run it all with `hermes sweep configs/sweeps/baselines.yaml`, a slice with
 # --only (for example --only @gpt), or list the runs with --list.
 # Interrupted runs resume where they stopped.
 benchmarks: [ck26, db26]
