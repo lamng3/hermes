@@ -49,6 +49,13 @@ def main(argv=None):
     plan.add_argument("--file", help="A file holding the SPARQL query.")
     plan.add_argument("--rows", type=int, default=20, help="Result rows to print.")
 
+    fewshot = commands.add_parser("fewshot", help="Synthetic few-shot examples from a graph.")
+    fewshot.add_argument("action", choices=("build", "show"))
+    fewshot.add_argument("--graph", required=True, help="Graph name from data/graphs.yaml.")
+    fewshot.add_argument("--count", type=int, default=30, help="Examples to keep.")
+    fewshot.add_argument("--attempts", type=int, help="Candidates to try (default 4 x count).")
+    fewshot.add_argument("--seed", type=int, default=0)
+
     commands.add_parser("systems", help="List the registered systems.")
 
     data = commands.add_parser("data", help="Benchmarks: list, fetch, verify.")
@@ -89,6 +96,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.command == "ask":
         return _ask(args)
+    if args.command == "fewshot":
+        return _fewshot(args)
     if args.command == "plan":
         return _plan(args)
     if args.command == "systems":
@@ -197,6 +206,33 @@ def _ask(args):
     for row in answer.rows[: args.rows_shown]:
         print("  ".join(planner.expression(row[v], names) if row.get(v) is not None else "-"
                         for v in answer.variables))
+    return 0
+
+
+def _fewshot(args):
+    from hermes import Budget, Hermes
+    from hermes import llm as llms
+    from hermes.pipeline.fewshot import FewShotStore, store_path
+    from hermes.pipeline.synthetic import SyntheticExamples
+
+    path = store_path(args.graph)
+    if args.action == "show":
+        for example in FewShotStore.load(path).examples:
+            print(f"[{example.meta.get('template', example.source)}] {example.question}")
+        return 0
+    kg = benchmarks.graph(args.graph)
+    llm = llms.from_env()
+    hermes = Hermes(kg, llm=llm, budget=Budget(llm_calls=3), examples=0)
+
+    def answer(question):
+        reply = hermes.ask(question)
+        return reply.sparql if reply.ok else ""
+
+    maker = SyntheticExamples(kg, hermes.catalog, hermes.names, llm, seed=args.seed)
+    kept, tried = maker.build(args.count, answer, args.attempts,
+                              log=lambda line: print(line, file=sys.stderr))
+    FewShotStore(kept).save(path)
+    print(f"{len(kept)} of {tried} candidates kept -> {path}")
     return 0
 
 

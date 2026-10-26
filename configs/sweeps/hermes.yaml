@@ -1,0 +1,28 @@
+# Hermes and what each part adds, on CK26 and DB26 with Llama 3.1 8B.
+# Run with `hermes sweep configs/sweeps/hermes.yaml`.
+benchmarks: [ck26, db26]
+cache: .cache/llm
+limits:
+  query_seconds: 30
+  item_seconds: 300
+
+systems:
+  - system: hermes                 # everything, 3 model calls at most
+    params: {llm_calls: 3}
+  - name: hermes-no-examples       # without the synthetic few-shots
+    system: hermes
+    params: {llm_calls: 3, examples: 0}
+  - name: hermes-no-repair         # one call: no model repairs or revisions
+    system: hermes
+    params: {llm_calls: 1, max_repairs: 0, revisions: 0}
+  - name: hermes-engine            # the store's engine plans the query, not Hermes
+    system: hermes
+    params: {llm_calls: 3, executor: engine}
+  - system: training-free          # baseline: one prompted draft
+  - system: budgeted               # baseline: the earlier budgeted planner
+    params: {llm_calls: 3, executions: 8}
+
+models:
+  - name: llama3.1-8b
+    provider: ollama
+    model: llama3.1
