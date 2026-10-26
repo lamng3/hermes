@@ -146,6 +146,7 @@ def test_repairs_for_what_small_models_write(olympics):
     assert values[:2] == ['"Norway"', "ex:Norway"]
     assert catalog(olympics).rank(Slot("ex:hosted", "property"))[0].term == "ex:hosted"
     assert catalog(olympics).rank(Slot("rdf:type", "property"))[0].term == "a"
+    assert catalog(olympics).rank(Slot("instance_of", "property"))[0].term == "a"
 
     typed = {"goal": {"answer": ["?c"], "type": "[telephone]"}, "actions": []}
     assert drop_unbound_type(typed, catalog(olympics))["goal"]["type"] == ""
