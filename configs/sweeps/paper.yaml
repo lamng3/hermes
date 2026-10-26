@@ -16,6 +16,8 @@ systems:
     params: {max_steps: 15}
   - system: prover             # Hermes
     params: {max_steps: 15}
+  - system: budgeted           # Hermes, budgeted: parse, bind, check, price, select
+    params: {llm_calls: 3, executions: 8}
   # Ablations are more entries with a name:
   - name: prover-steps-8
     system: prover

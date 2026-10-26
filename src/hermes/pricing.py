@@ -43,6 +43,16 @@ class Count:
     triples: float
     subjects: float
     objects: float
+    literals: float = 0.0  # triples whose object is a literal
+
+    @property
+    def kind(self):
+        """literal or entity when every object is one, else None."""
+        if not self.triples:
+            return None
+        if self.literals == self.triples:
+            return "literal"
+        return "entity" if self.literals == 0 else None
 
 
 @dataclass
@@ -75,12 +85,10 @@ class Statistics:
 
     def _summarize(self):
         rows = self.kg.try_query(
-            "SELECT ?p (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?ds) (COUNT(DISTINCT ?o) AS ?do) "
-            "WHERE { ?s ?p ?o } GROUP BY ?p"
+            f"SELECT ?p {_COUNTS} WHERE {{ ?s ?p ?o }} GROUP BY ?p"
         )["results"]["bindings"]
         for row in rows:
-            self.predicates[row["p"]["value"]] = Count(
-                _number(row, "n"), _number(row, "ds"), _number(row, "do"))
+            self.predicates[row["p"]["value"]] = _count(row)
         rows = self.kg.try_query(
             f"SELECT ?c (COUNT(DISTINCT ?x) AS ?n) WHERE {{ ?x <{TYPE}> ?c }} GROUP BY ?c"
         )["results"]["bindings"]
@@ -100,11 +108,9 @@ class Statistics:
             if iri in self.predicates or self.complete:
                 return self.predicates.get(iri, Count(0, 0, 0) if self.complete else None)
         rows = self.kg.try_query(
-            f"SELECT (COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?ds) (COUNT(DISTINCT ?o) AS ?do) "
-            f"WHERE {{ ?s <{iri}> ?o }}"
+            f"SELECT {_COUNTS} WHERE {{ ?s <{iri}> ?o }}"
         )["results"]["bindings"]
-        count = Count(_number(rows[0], "n"), _number(rows[0], "ds"),
-                      _number(rows[0], "do")) if rows and "n" in rows[0] else None
+        count = _count(rows[0]) if rows and "n" in rows[0] else None
         with self._lock:
             self.predicates[iri] = count
         return count
@@ -323,6 +329,14 @@ def _variable(token):
 
 def _path(token):
     return any(mark in token for mark in "/|^*+") and not token.startswith("<")
+
+
+_COUNTS = ("(COUNT(*) AS ?n) (COUNT(DISTINCT ?s) AS ?ds) (COUNT(DISTINCT ?o) AS ?do) "
+           "(SUM(IF(isLiteral(?o), 1, 0)) AS ?lit)")
+
+
+def _count(row):
+    return Count(_number(row, "n"), _number(row, "ds"), _number(row, "do"), _number(row, "lit"))
 
 
 def _number(row, name):
