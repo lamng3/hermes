@@ -134,3 +134,21 @@ def test_a_page_can_drive_the_pipeline_one_reply_at_a_time(olympics):
     assert len(replies) == 1 and len(answer.rows) == 6
     with pytest.raises(NeedReply):
         Hermes(olympics, llm=ReplayLLM()).ask("Which cities hosted the Winter Olympics?")
+
+
+def test_synthetic_examples_survive_only_a_round_trip(olympics):
+    from hermes.pipeline.synthetic import SyntheticExamples
+
+    catalog = catalog_for(olympics)
+    names = Prefixes.of(olympics)
+    maker = SyntheticExamples(olympics, catalog, names,
+                              ScriptedLLM(lambda prompt, system: "Which games did it host?"), seed=1)
+    candidates = list(maker.candidates(10))
+    assert candidates and all(c.sparql.startswith("PREFIX") for c in candidates)
+    templates = {c.template for c in candidates}
+    assert templates & {"attribute", "relation", "inverse", "value", "count", "superlative",
+                        "two hops"}
+    kept, tried = maker.build(2, lambda question: candidates[0].sparql, attempts=6)
+    assert tried >= len(kept) and all(e.meta["roundtrip_f1"] >= 0.7 for e in kept)
+    none, _ = maker.build(2, lambda question: "", attempts=3)
+    assert none == []
