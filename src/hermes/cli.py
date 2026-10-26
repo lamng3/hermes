@@ -144,47 +144,42 @@ def main(argv=None):
 
 
 def _plan(args):
-    from hermes.planner import relational as ra
+    from hermes import planner
 
     sparql = args.query or Path(args.file).read_text(encoding="utf-8")
     kg = benchmarks.graph(args.graph) if args.graph else KnowledgeGraph.from_files(*args.files)
-    written, optimized, rewrites, estimate = ra.plan(sparql, kg)
-    run = ra.Executor(kg)
-    results = {}
-    for name, query in (("as written", written), ("optimized", optimized)):
-        results[name] = run(query)
-    engine = kg.query(sparql)
-    traces = {name: trace for name, (_rows, trace) in results.items()}
+    optimized = planner.plan(sparql, kg)
+    written, query, estimate = optimized.written, optimized.query, optimized.estimator
+    run = planner.PlanExecutor(kg)
+    before, after = run(written), run(query)
+    engine = planner.EngineExecutor(kg)(written)
 
     def notes(trace):
         return lambda node: (f"   est {estimate(node).rows:,.1f}"
                              + (f" · got {trace.rows[id(node)]:,}" if id(node) in trace.rows else ""))
 
-    print("As written\n" + ra.tree(written.root, written.namespaces, notes(traces["as written"])))
-    print("\nRewrites\n" + ("\n".join(f"- {line}" for line in rewrites) or "- none"))
-    print("\nOptimized\n" + ra.tree(optimized.root, optimized.namespaces,
-                                       notes(traces["optimized"])))
-    print("\n" + ra.formula(optimized.root, optimized.namespaces))
+    print("As written\n" + planner.tree(written.root, written.namespaces, notes(before.trace)))
+    print("\nRewrites")
+    print("\n".join(f"- {r.text}" for r in optimized.rewrites) or "- none")
+    print("\nOptimized\n" + planner.tree(query.root, query.namespaces, notes(after.trace)))
+    print("\n" + planner.formula(query.root, query.namespaces))
     print(f"\n{'':22}{'as written':>12}{'optimized':>12}")
-    for label, value in (("estimated C_out", lambda q, t: f"{estimate(q.root).cost:,.0f}"),
-                         ("store queries", lambda q, t: f"{t.queries:,}"),
-                         ("rows fetched", lambda q, t: f"{t.fetched:,}"),
-                         ("intermediate rows", lambda q, t: f"{t.intermediate:,}"),
-                         ("milliseconds", lambda q, t: f"{t.seconds * 1000:,.1f}")):
-        print(f"{label:22}{value(written, traces['as written']):>12}"
-              f"{value(optimized, traces['optimized']):>12}")
-    rows = results["optimized"][0]
-    same = ra.same_answers(rows, engine, optimized)
+    for name, value in (("estimated C_out", lambda q, t: f"{estimate(q.root).cost:,.0f}"),
+                        ("store queries", lambda q, t: f"{t.queries:,}"),
+                        ("rows fetched", lambda q, t: f"{t.fetched:,}"),
+                        ("intermediate rows", lambda q, t: f"{t.intermediate:,}"),
+                        ("milliseconds", lambda q, t: f"{t.seconds * 1000:,.1f}")):
+        print(f"{name:22}{value(written, before.trace):>12}{value(query, after.trace):>12}")
+    same = planner.same_answers(after, engine)
     print(f"\nSame answers as the engine: {'yes' if same else 'NO'}")
-    if optimized.form == "ASK":
-        print(f"Answer: {rows}")
+    if after.form == "ASK":
+        print(f"Answer: {after.boolean}")
         return 0 if same else 1
-    print(f"{len(rows)} rows" + (f" (first {args.rows})" if len(rows) > args.rows else ""))
-    names = [str(v) for v in optimized.variables]
-    print("  ".join("?" + n for n in names))
-    for row in rows[: args.rows]:
-        print("  ".join(ra.expression(row[v], optimized.namespaces) if row.get(v) is not None
-                        else "-" for v in optimized.variables))
+    print(f"{len(after.rows)} rows" + (f" (first {args.rows})" if len(after.rows) > args.rows else ""))
+    print("  ".join("?" + str(v) for v in after.variables))
+    for row in after.rows[: args.rows]:
+        print("  ".join(planner.expression(row[v], query.namespaces) if row.get(v) is not None
+                        else "-" for v in after.variables))
     return 0 if same else 1
 
 
