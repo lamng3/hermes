@@ -267,45 +267,56 @@ class Pricer:
 
     def _scan(self, subject, predicate, value, unknown):
         """Rows of one triple pattern and distinct values of its variables."""
-        stats = self.statistics
         if predicate == "a":
             prop = TYPE
         elif _variable(predicate) or _path(predicate):
             prop = None
         else:
             prop = self.expand(predicate)
-        if prop == TYPE and not _variable(value):
-            cls = self.expand(value)
-            count = stats.instances(cls)
-            if count is None:
-                unknown.append(value)
-                count = DEFAULT_ROWS
-            rows = count if _variable(subject) else min(1.0, count)
-            return rows, _distinct({subject: rows})
-        if prop is None:
-            total = stats.everything()
-            if total is None:
-                unknown.append(predicate)
-                total = Count(DEFAULT_ROWS * 100, DEFAULT_ROWS * 10, DEFAULT_ROWS * 10)
-            count = total
-        else:
-            count = stats.predicate(prop)
-            if count is None:
-                unknown.append(predicate)
-                count = Count(DEFAULT_ROWS, DEFAULT_ROWS / 10, DEFAULT_ROWS / 10)
-        rows = count.triples
-        if not _variable(subject):
-            rows /= max(count.subjects, 1.0)
-        if not _variable(value):
-            rows /= max(count.objects, 1.0)
-        found = {}
-        if _variable(subject):
-            found[subject] = min(rows, count.subjects)
-        if _variable(predicate):
-            found[predicate] = min(rows, max(1.0, len(stats.predicates)))
-        if _variable(value):
-            found[value] = min(rows, count.objects)
-        return rows, _distinct(found)
+        cls = self.expand(value) if prop == TYPE and not _variable(value) else None
+        return scan(self.statistics, subject, predicate, value, prop, cls, unknown)
+
+
+def scan(stats, subject, predicate, value, prop, cls=None, unknown=None):
+    """System R estimate of one triple pattern: its rows, and distinct values per variable.
+
+    `subject`, `predicate` and `value` are the pattern's terms as written, where
+    variables start with ? or $. `prop` is the predicate's IRI, or None for a
+    variable or a path; `cls` is the class IRI of `?x rdf:type C`. Terms the
+    store could not count are appended to `unknown` and priced with a default.
+    """
+    unknown = [] if unknown is None else unknown
+    if cls is not None:
+        count = stats.instances(cls)
+        if count is None:
+            unknown.append(value)
+            count = DEFAULT_ROWS
+        rows = count if _variable(subject) else min(1.0, count)
+        return rows, _distinct({subject: rows} if _variable(subject) else {})
+    if prop is None:
+        total = stats.everything()
+        if total is None:
+            unknown.append(predicate)
+            total = Count(DEFAULT_ROWS * 100, DEFAULT_ROWS * 10, DEFAULT_ROWS * 10)
+        count = total
+    else:
+        count = stats.predicate(prop)
+        if count is None:
+            unknown.append(predicate)
+            count = Count(DEFAULT_ROWS, DEFAULT_ROWS / 10, DEFAULT_ROWS / 10)
+    rows = count.triples
+    if not _variable(subject):
+        rows /= max(count.subjects, 1.0)
+    if not _variable(value):
+        rows /= max(count.objects, 1.0)
+    found = {}
+    if _variable(subject):
+        found[subject] = min(rows, count.subjects)
+    if _variable(predicate):
+        found[predicate] = min(rows, max(1.0, len(stats.predicates)))
+    if _variable(value):
+        found[value] = min(rows, count.objects)
+    return rows, _distinct(found)
 
 
 def qerror(estimated, actual):
