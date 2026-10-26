@@ -5,8 +5,7 @@ Repairs, cheapest first, each recorded:
 1. rules: declare the prefixes the query uses but forgot, and move ORDER BY,
    LIMIT and the like out of the WHERE block (hermes.sparql.validate);
 2. unknown terms: a property or class the catalog does not know is replaced
-   by the closest one when they are close enough (NL2KQL does this by
-   embeddings with a threshold of 0.9; here by name similarity);
+   by the closest one when their names are close enough;
 3. guessed entities: an entity IRI the graph does not mention is replaced by
    the entity whose label matches its name;
 4. the model: a query that still does not parse, that the type check
@@ -168,6 +167,10 @@ class QueryRefiner:
         except UnsupportedQuery as exc:
             return [str(exc)]
         problems = []
+        bound = _bound(query.root)
+        for variable in query.variables:
+            if variable not in bound:
+                problems.append(f"?{variable} is selected but no pattern binds it")
         for scan in _scans(query.root):
             if not isinstance(scan.p, URIRef):
                 continue
@@ -210,6 +213,17 @@ class QueryRefiner:
 
 _SCHEMA = ("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "http://www.w3.org/2000/01/rdf-schema#",
            "http://www.w3.org/2002/07/owl#")
+
+
+def _bound(node):
+    """Variables the query's WHERE clause can bind, including aggregates' and BIND's."""
+    from hermes.planner.algebra import Op, variables
+
+    found = set(variables(node))
+    if isinstance(node, Op):
+        for child in node.children:
+            found |= _bound(child)
+    return found
 
 
 def _scans(node):

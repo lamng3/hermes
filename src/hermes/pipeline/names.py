@@ -8,7 +8,9 @@ CORE = (
     ("owl", "http://www.w3.org/2002/07/owl#"),
     ("xsd", "http://www.w3.org/2001/XMLSchema#"),
 )
-_LOCAL = re.compile(r"[A-Za-z0-9_](?:[A-Za-z0-9_.%-]*[A-Za-z0-9_%-])?")
+# Local names plain enough for every engine. SPARQL allows '.' and %-escapes in them, but
+# Oxigraph 0.5 rejects some (`p:a.b%40c.org`), so IRIs with them are written whole.
+_LOCAL = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_-]*")
 
 
 class Prefixes:

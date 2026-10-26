@@ -439,7 +439,7 @@ def leaderboard(results="results", benchmark=None):
     """Markdown table of the latest run per config, with official peer rows."""
     root = Path(results)
     lines = []
-    for bench_dir in sorted(p for p in root.iterdir() if p.is_dir() and p.name not in ("peers", "archive")):
+    for bench_dir in sorted(p for p in root.iterdir() if p.is_dir() and p.name not in ("peers", "archive", "planner")):
         if benchmark and bench_dir.name != benchmark:
             continue
         rows, cost_rows = [], []
