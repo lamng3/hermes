@@ -8,7 +8,8 @@
 from hermes.planner.algebra import Join, Op, Query, Scan, UnsupportedQuery, translate
 from hermes.planner.estimate import Estimate, Estimator
 from hermes.planner.executor import (
-    EngineExecutor, Executor, PlanExecutor, Result, Trace, executor_for, same_answers,
+    EngineExecutor, Executor, PlanExecutor, PlanTooLarge, Result, Trace, executor_for,
+    same_answers,
 )
 from hermes.planner.optimizer import Optimized, Optimizer, Rewrite
 from hermes.planner.render import expression, formula, label, tree
@@ -23,7 +24,7 @@ def plan(sparql, kg, rules=DEFAULT_RULES):
 
 __all__ = [
     "DEFAULT_RULES", "EngineExecutor", "Estimate", "Estimator", "Executor", "Join", "Op",
-    "Optimized", "Optimizer", "OrderJoins", "PlanExecutor", "PruneScans", "PushSelections",
+    "Optimized", "Optimizer", "OrderJoins", "PlanExecutor", "PlanTooLarge", "PruneScans", "PushSelections",
     "Query", "Result", "Rewrite", "Rule", "Scan", "Trace", "UnsupportedQuery", "executor_for",
     "expression", "formula", "label", "plan", "same_answers", "translate", "tree",
 ]

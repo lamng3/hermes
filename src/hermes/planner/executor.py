@@ -15,8 +15,11 @@ import itertools
 import time
 from dataclasses import dataclass, field
 
+from decimal import Decimal, InvalidOperation
+
 from rdflib import BNode, Graph, Literal, URIRef, Variable
 from rdflib.plugins.sparql.evaluate import evalPart
+from rdflib.store import Store
 from rdflib.plugins.sparql.parserutils import CompValue
 from rdflib.plugins.sparql.sparql import QueryContext
 
@@ -24,6 +27,11 @@ from hermes.planner.algebra import Join, Scan, copy_part, variables
 from hermes.planner.estimate import BIND_LIMIT, scan_below
 
 BIND_CHUNK = 100  # bindings per scan query of a bind join
+MAX_ROWS = 200_000  # rows one scan may fetch before the run stops
+
+
+class PlanTooLarge(RuntimeError):
+    """A scan would fetch more rows than the executor allows."""
 
 
 @dataclass
@@ -57,10 +65,12 @@ class Executor:
 class PlanExecutor(Executor):
     """Follow the plan: scans as single-pattern queries, joins in the plan's order."""
 
-    def __init__(self, kg, bind_joins=True):
+    def __init__(self, kg, bind_joins=True, max_rows=MAX_ROWS):
         self.kg = kg
         self.bind_joins = bind_joins
-        self.context = QueryContext(graph=Graph(), initBindings={})
+        self.max_rows = max_rows
+        # EXISTS and property paths read the graph through rdflib: answer them from the store.
+        self.context = QueryContext(graph=Graph(store=StoreTriples(kg)), initBindings={})
 
     def __call__(self, query):
         trace = Trace()
@@ -121,10 +131,13 @@ class PlanExecutor(Executor):
                 values = f"VALUES ({head}) {{ {body} }} "
                 columns = sorted(set(out) | set(shared), key=str)
             select = " ".join(v.n3() for v in columns) or "*"
-            result = self.kg.query(f"SELECT {select} WHERE {{ {values}{pattern} . }}")
+            result = self.kg.query(f"SELECT {select} WHERE {{ {values}{pattern} . }} "
+                                   f"LIMIT {self.max_rows + 1}")
             trace.queries += 1
             for binding in result["results"]["bindings"]:
                 rows.append({Variable(k): term(v) for k, v in binding.items()})
+            if len(rows) > self.max_rows:
+                raise PlanTooLarge(f"the scan {pattern} fetches more than {self.max_rows:,} rows")
         trace.fetched += len(rows)
         return rows
 
@@ -180,10 +193,48 @@ def same_answers(one, other):
     names = list(one.variables)
 
     def values(result):
-        return sorted(tuple(str(row.get(v)) if row.get(v) is not None else "" for v in names)
-                      for row in result.rows)
+        return sorted(tuple(comparable(row.get(v)) for v in names) for row in result.rows)
 
     return values(one) == values(other)
+
+
+class StoreTriples(Store):
+    """Adapter: an rdflib store whose triples come from single-pattern queries to the graph."""
+
+    def __init__(self, kg):
+        super().__init__()
+        self.kg = kg
+
+    def triples(self, pattern, context=None):
+        names = ("s", "p", "o")
+        terms = [t.n3() if t is not None else f"?{n}" for t, n in zip(pattern[:3], names)]
+        free = [f"?{n}" for t, n in zip(pattern[:3], names) if t is None]
+        result = self.kg.query(f"SELECT {' '.join(free) or '*'} WHERE {{ {' '.join(terms)} }}"
+                               if free else f"ASK {{ {' '.join(terms)} }}")
+        if not free:
+            if result.get("boolean"):
+                yield tuple(pattern[:3]), iter([None])
+            return
+        for binding in result["results"]["bindings"]:
+            values = {k: term(v) for k, v in binding.items()}
+            yield tuple(t if t is not None else values[n] for t, n in zip(pattern[:3], names)), \
+                iter([None])
+
+    def __len__(self, context=None):
+        return 0
+
+
+def comparable(value):
+    """A value as text, numbers in one canonical form: engines print them differently."""
+    if value is None:
+        return ""
+    if isinstance(value, Literal) and value.datatype is not None and str(value.datatype).endswith(
+            ("#decimal", "#double", "#float", "#integer", "#int", "#long")):
+        try:
+            return format(Decimal(str(value)).normalize(), "f")
+        except InvalidOperation:
+            pass
+    return str(value)
 
 
 def rows_node(rows):

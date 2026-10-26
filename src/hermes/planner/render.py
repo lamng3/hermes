@@ -1,6 +1,7 @@
 """Reading plans: expressions as SPARQL-like text, a plan as a tree or a formula."""
 
 from rdflib import BNode, Literal, URIRef, Variable
+from rdflib.paths import Path
 from rdflib.plugins.sparql.parserutils import CompValue
 
 from hermes.planner.algebra import Join, Scan, children, field
@@ -18,7 +19,7 @@ def expression(expr, namespaces=None):
     show = lambda e: expression(e, namespaces)  # noqa: E731
     if isinstance(expr, Variable):
         return f"?{expr}"
-    if isinstance(expr, (URIRef, Literal, BNode)):
+    if isinstance(expr, (URIRef, Literal, BNode, Path)):
         return expr.n3(namespaces) if namespaces is not None else expr.n3()
     if isinstance(expr, (list, tuple)):
         return ", ".join(show(e) for e in expr)

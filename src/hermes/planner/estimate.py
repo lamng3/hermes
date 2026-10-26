@@ -16,9 +16,10 @@ import math
 from dataclasses import dataclass
 
 from rdflib import URIRef, Variable
+from rdflib.paths import AlternativePath, InvPath, MulPath, NegatedPath, SequencePath
 
 from hermes.planner.algebra import Join, Op, Scan, field
-from hermes.pricing.statistics import EQUALITY, RANGE, TYPE, scan
+from hermes.pricing.statistics import DEFAULT_ROWS, EQUALITY, RANGE, TYPE, Count, scan
 
 
 BIND_LIMIT = 500  # a bind join sends at most this many distinct bindings
@@ -97,8 +98,47 @@ class Estimator:
         s, p, o = (f"?{t}" if isinstance(t, Variable) else "<const>" for t in node.terms)
         prop = str(node.p) if isinstance(node.p, URIRef) else None
         cls = str(node.o) if prop == TYPE and isinstance(node.o, URIRef) else None
-        rows, distinct = scan(self.statistics, s, p, o, prop, cls)
+        count = None
+        if not isinstance(node.p, (URIRef, Variable)):
+            count = path_count(node.p, self.statistics)
+        rows, distinct = scan(self.statistics, s, p, o, prop, cls, count=count)
         return Estimate(rows, rows, {Variable(k[1:]): v for k, v in distinct.items()})
+
+
+def path_count(path, statistics):
+    """Triples, distinct subjects and objects of a property path, from its predicates.
+
+    A sequence p/q is the join of p and q on p's objects and q's subjects; an
+    alternative p|q sums them; ^p swaps subjects and objects; p* and p+ are
+    taken as twice p (one or two steps), and p? as p.
+    """
+    if isinstance(path, URIRef):
+        count = statistics.predicate(str(path))
+        return count if count is not None else Count(DEFAULT_ROWS, DEFAULT_ROWS / 10,
+                                                     DEFAULT_ROWS / 10)
+    if isinstance(path, InvPath):
+        inner = path_count(path.arg, statistics)
+        return Count(inner.triples, inner.objects, inner.subjects)
+    if isinstance(path, SequencePath):
+        counts = [path_count(arg, statistics) for arg in path.args]
+        total = counts[0]
+        for step in counts[1:]:
+            triples = total.triples * step.triples / max(total.objects, step.subjects, 1.0)
+            total = Count(triples, min(total.subjects, triples), min(step.objects, triples))
+        return total
+    if isinstance(path, AlternativePath):
+        counts = [path_count(arg, statistics) for arg in path.args]
+        return Count(sum(c.triples for c in counts), sum(c.subjects for c in counts),
+                     sum(c.objects for c in counts))
+    if isinstance(path, MulPath):
+        inner = path_count(path.path, statistics)
+        grow = 1.0 if path.mod == "?" else 2.0
+        return Count(inner.triples * grow, inner.subjects * grow, inner.objects * grow)
+    if isinstance(path, NegatedPath):
+        total = statistics.everything()
+        return total if total is not None else Count(DEFAULT_ROWS * 100, DEFAULT_ROWS * 10,
+                                                     DEFAULT_ROWS * 10)
+    return Count(DEFAULT_ROWS, DEFAULT_ROWS / 10, DEFAULT_ROWS / 10)
 
 
 def scan_below(node):
