@@ -70,3 +70,14 @@ Mean F1 of executed CK26 candidates ranked by p: top 10% 0.425, top 25% 0.169, t
 |---|--:|--:|
 | budgeted, CK26 | 0 | 40 |
 | budgeted, DB26 | 2 (model-written `xsd:datetime(...)`, a malformed projection) | 26 |
+
+## Rerun after the demo-found fixes (2026-10-26)
+
+Folder `results/ck26/budgeted/20261026-001030`, commit 6e31e4e: ranking by a machine-independent price, label phrases bound to `rdfs:label`, and the candidate cap counting well-typed plans only.
+
+| Run | F1 all | F1 dev (Q1–10) | F1 held-out (Q11–50) | Items with no candidate | Answered | F1 on answered |
+|---|--:|--:|--:|--:|--:|--:|
+| budgeted, 2026-10-25 | 0.111 | 0.200 | 0.089 | 40 | 27 | 0.411 |
+| budgeted, 2026-10-26 | 0.120 | 0.250 | 0.087 | 36 | 30 | 0.399 |
+
+Held-out accuracy is unchanged within noise; the gain is on the development questions. Model calls per item are not comparable between the two runs: replies replayed from the cache are not metered.
