@@ -86,7 +86,12 @@ question.
 3. **The Hermes planner.** A verifier rejects ill-typed steps before they
    reach the graph store, and an LLM planner drives it over local RDF files
    or remote SPARQL endpoints (`prover`, `algebra-agent`).
-4. **A reproducible evaluation.** Six benchmarks in one normalized format and
+4. **Budgeted planning.** Compiled like SQL: the model parses the question
+   once into a plan with bracketed phrases, which are bound to the ontology,
+   type-checked, priced with System R estimates (`hermes.pricing`), and run
+   best value for price first under a cap on model calls and executions
+   (`budgeted`).
+5. **A reproducible evaluation.** Six benchmarks in one normalized format and
    a scorer that reproduces all 5,024 published Text2SPARQL 2026 scores, with
    strict and reproducible-subset variants (`hermes.evaluation`, `data/`).
 
@@ -197,6 +202,7 @@ a `KnowledgeGraph`: a store to run queries on and a vocabulary to prompt with.
 |---|---|---|
 | `prover` | **Hermes**: the planner with the verifier and goals | up to 15 |
 | `algebra-agent` | Hermes without the verifier: planning with execution feedback only | up to 15 |
+| `budgeted` | Hermes, budgeted: parse, bind, check, price, select; re-parse while the budget lasts | up to `llm_calls` (3) |
 | `training-free` | baseline: one prompted draft from the vocabulary, one parse repair | 1-2 |
 | `uniqgen` | baseline: UniQGen (Wang et al., [arXiv:2605.00845](https://arxiv.org/abs/2605.00845)), constraint table then Chase & Backchase | 2 |
 
