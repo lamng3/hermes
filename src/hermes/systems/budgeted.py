@@ -258,8 +258,9 @@ class Budgeted:
                            "the remaining candidates cost more than the budget allows")
                     log({"phase": "pause", "why": why, "spent": spent.to_dict()})
                 return None
+            # Rank by a price that depends only on the plan, so runs reproduce.
             candidate = max(options, key=lambda c: c.probability
-                            - self.price_weight * (c.estimate.seconds or 0.0))
+                            - self.price_weight * pricer.nominal(c.estimate))
             started = time.perf_counter()
             observation = explorer.observe(candidate.plan, "run")
             seconds = time.perf_counter() - started
