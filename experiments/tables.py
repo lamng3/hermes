@@ -52,7 +52,7 @@ def summarize(data):
         "Repro": data["metrics"]["reproducible"]["average"]["set_F"],
         "exact": sum(1 for p in predictions if (p.get("scores") or {}).get("set_F") == 1),
         "errors": sum(1 for p in predictions if p.get("error")),
-        "rejections": sum(_extra(p).get("kernel_rejections", 0) for p in predictions),
+        "rejections": sum(_rejections(_extra(p)) for p in predictions),
         "steps": statistics.mean(_extra(p).get("steps", 0) for p in predictions),
         "wall": data["run"]["wall_seconds"] / 60,
         "p50": statistics.median(seconds),
@@ -73,10 +73,15 @@ def _extra(prediction):
     return extra if isinstance(extra, dict) else {}
 
 
+def _rejections(extra):
+    # Runs before the rename to hermes.verifier recorded "kernel_rejections".
+    return extra.get("verifier_rejections", extra.get("kernel_rejections", 0))
+
+
 def _ints(text):
     import re
 
-    return re.findall(r"'(kernel_rejections|steps)': (\d+)", text)
+    return re.findall(r"'(verifier_rejections|kernel_rejections|steps)': (\d+)", text)
 
 
 def fmt(value, digits=3):
