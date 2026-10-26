@@ -150,3 +150,21 @@ def test_repairs_for_what_small_models_write(olympics):
 
     typed = {"goal": {"answer": ["?c"], "type": "[telephone]"}, "actions": []}
     assert drop_unbound_type(typed, catalog(olympics))["goal"]["type"] == ""
+
+
+def test_a_session_explains_every_phase(olympics):
+    session = Budgeted().start("Which cities hosted the Winter Olympics?", olympics, explain=True)
+    text = session.next_prompt()
+    assert "Question: Which cities hosted the Winter Olympics?" in text
+    session.take(json.dumps(WINTER))
+    result = session.result()
+    phases = [event["phase"] for event in session.events]
+    assert phases[:4] == ["parse", "repair", "bind", "check"] and phases[-1] == "answer"
+    bind = next(e for e in session.events if e["phase"] == "bind")
+    assert {"phrase": "hosted", "kind": "property"}.items() <= bind["slots"][1].items()
+    check = next(e for e in session.events if e["phase"] == "check")
+    assert all({"ok", "sparql", "errors", "context"} <= set(c) for c in check["candidates"])
+    run = next(e for e in session.events if e["phase"] == "run")
+    assert run["accepted"] and run["rows"] == 6 and run["p"] > run["p_before"]
+    assert session.done and session.next_prompt() is None
+    assert cities(olympics, result["sparql"]) == WINTER_CITIES

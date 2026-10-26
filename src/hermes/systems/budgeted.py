@@ -119,85 +119,74 @@ class Budgeted:
         self.max_entities = max_entities
 
     def __call__(self, question, kg, context=None):
-        question = (question or "").strip()
-        if not question:
-            raise ValueError("A question is required.")
         llm = self.llm or llms.from_env()
-        context = as_context(context)
-        kg = as_knowledge_graph(kg)
-        explorer = Explorer(kg, sample_size=self.sample_size)
-        pricer = Pricer.for_kg(kg, explorer.expand)
-        explorer.verifier = Verifier.for_kg(kg, explorer.prefixes, pricer.statistics)
-        catalog = catalog_for(kg, explorer, pricer.statistics)
-        entities = explorer.linker.link(question)[: self.max_entities]
-        spent, pool, trace, readings = Spent(), [], [], []
-        accepted = None
-        while spent.llm_calls < self.llm_calls and accepted is None:
-            text = prompt(question, kg.vocabulary, explorer, entities, context,
-                          feedback(readings, pool))
-            reply = llm.complete(text, SYSTEM)
-            spent.llm_calls += 1
-            try:
-                reading = parse_reading(reply)
-            except ValueError as exc:
-                readings.append({"error": f"invalid: {exc}"})
-                trace.append({"step": "parse", "observation": f"invalid: {exc}"})
-                continue
-            found, note = self.bind(reading, len(readings), catalog, explorer, pricer, pool)
-            readings.append({**reading, "note": note})
-            trace.append({"step": "parse", "reading": reading, "observation": note})
-            pool.extend(found)
-            accepted = self.select(pool, spent, explorer, pricer, trace)
-        chosen = accepted or best(pool)
-        return {
-            # No reading bound to a well-typed plan: abstain, and keep the trace.
-            "sparql": chosen.sparql if chosen else "",
-            "confidence": round(chosen.probability, 4) if chosen else 0.0,
-            "abstain": chosen is None or chosen.probability < self.abstain,
-            "readings": len(readings),
-            "candidates": [c.to_dict() for c in pool],
-            "spent": spent.to_dict(),
-            "verifier_rejections": explorer.rejected,
-            "qerror": [round(e, 2) for e in pricer.errors],
-            "trace": trace,
-            "model": llm.model,
-            "provider": llm.provider,
-        }
+        session = self.start(question, kg, context)
+        while (text := session.next_prompt()) is not None:
+            session.take(llm.complete(text, SYSTEM))
+        return {**session.result(), "model": llm.model, "provider": llm.provider}
 
-    def bind(self, reading, number, catalog, explorer, pricer, pool):
+    def start(self, question, kg, context=None, explain=False):
+        """A planning session for one question, driven one model reply at a time.
+
+        With explain, the session records what every phase did in `events`,
+        which the step-by-step demo shows.
+        """
+        return Session(self, question, kg, context, explain)
+
+    def bind(self, reading, number, catalog, explorer, pricer, pool, log=None):
         """Candidate plans of one reading: bound, verified, priced and scored."""
         try:
             parse_goal(reading.get("goal") or {})
         except ValueError as exc:
             return [], f"invalid goal: {exc}"
+        given = reading
         reading = drop_unbound_type(reading, catalog)
         reading = open_unknown(reading, lambda iri: mentioned(explorer.kg, iri), explorer.expand)
         choices = {slot: catalog.rank(slot, self.per_slot) for slot in slots(reading)}
+        if log is not None:
+            log({"phase": "repair", "reading": number, "changes": _changes(given, reading)})
+            log({"phase": "bind", "reading": number, "slots": [
+                {"phrase": slot.phrase, "kind": slot.kind,
+                 "candidates": [{"term": c.term, "score": c.score, "label": c.label}
+                                for c in found]}
+                for slot, found in choices.items()]})
         unbound = [slot.phrase for slot, found in choices.items() if not found]
         if unbound:
             return [], "no term matches " + ", ".join(f"[{p}]" for p in unbound)
         seen = {c.sparql for c in pool}
-        found, rejected, errors = [], 0, []
+        found, rejected, errors, checked = [], 0, [], []
         for assignment, weight in assignments(choices, self.candidates):
             bound = substitute(reading, assignment)
-            variants = [(bound, weight)] + [
-                (variant, weight * _COLLAPSE * score)
+            variants = [(bound, weight, "binding")] + [
+                (variant, weight * _COLLAPSE * score, "label collapse")
                 for variant, score in collapse_labels(bound, catalog.resolve)]
-            for variant, score in variants:
+            for variant, score, origin in variants:
+                entry = {"origin": origin, "weight": round(score, 4)} if log else None
                 candidate = self.candidate(variant, score, max(len(assignment), 1),
-                                           number, explorer, pricer, errors)
+                                           number, explorer, pricer, errors, entry)
                 if candidate is None:
                     rejected += 1
                 elif candidate.sparql not in seen:
                     seen.add(candidate.sparql)
                     found.append(candidate)
+                elif entry is not None:
+                    entry["duplicate"] = True
+                if entry is not None:
+                    checked.append(entry)
+        if log is not None:
+            log({"phase": "check", "reading": number, "candidates": checked})
         note = f"{len(found)} new candidates, {rejected} rejected"
         if not found and errors:
             note += f" (last: {errors[-1][:200]})"
         return found, note
 
-    def candidate(self, bound, weight, slots_bound, number, explorer, pricer, errors):
-        """One bound reading as a verified, priced and scored candidate, or None."""
+    def candidate(self, bound, weight, slots_bound, number, explorer, pricer, errors,
+                  entry=None):
+        """One bound reading as a verified, priced and scored candidate, or None.
+
+        With an `entry` dict, it is filled with what the verifier and pricing said.
+        """
+        entry = {} if entry is None else entry
         try:
             goal = parse_goal(bound["goal"])
             plan = Plan()
@@ -205,9 +194,11 @@ class Budgeted:
                 plan = parse_action(data).apply(plan)
         except (ValueError, TypeError, KeyError) as exc:
             errors.append(str(exc))
+            entry.update(ok=False, errors=[str(exc)])
             return None
         if plan.empty:
             errors.append("the plan has no triple pattern")
+            entry.update(ok=False, errors=["the plan has no triple pattern"])
             return None
         judgment = explorer.verifier.check(plan, goal)
         if judgment.ok and goal.type and any(" : " + goal.type in g for g in judgment.goals):
@@ -219,6 +210,12 @@ class Budgeted:
             closed = explorer.verifier.check(typed, goal)
             if closed.ok and len(closed.goals) < len(judgment.goals):
                 plan, judgment = typed, closed
+                entry["closed_type"] = goal.type
+        entry.update(
+            sparql=render(plan, explorer.header), ok=judgment.ok, errors=list(judgment.errors),
+            warnings=list(judgment.warnings), goals=list(judgment.goals),
+            context={v: sorted(explorer.verifier.short(t) for t in types)
+                     for v, types in sorted(judgment.context.items())})
         if not judgment.ok:
             explorer.rejected += 1
             errors.append("; ".join(judgment.errors))
@@ -234,9 +231,11 @@ class Budgeted:
         candidate = Candidate(number, plan, goal, render(plan, explorer.header), features,
                               estimate)
         candidate.probability = self.scorer.probability(features)
+        entry.update(estimate=estimate.to_dict(), features=dict(features),
+                     p=round(candidate.probability, 4))
         return candidate
 
-    def select(self, pool, spent, explorer, pricer, trace):
+    def select(self, pool, spent, explorer, pricer, trace, log=None):
         """Run candidates, best value for price first, until one is accepted.
 
         While model calls remain, each reading gets an even share of the
@@ -252,6 +251,12 @@ class Budgeted:
             options = [c for c in pool if not c.executed and self.affordable(c, spent)
                        and (last or ran.get(c.reading, 0) < share)]
             if not options:
+                if log is not None:
+                    waiting = [c for c in pool if not c.executed]
+                    why = ("no candidate left to run" if not waiting else
+                           "this reading's share of executions is spent" if not last else
+                           "the remaining candidates cost more than the budget allows")
+                    log({"phase": "pause", "why": why, "spent": spent.to_dict()})
                 return None
             candidate = max(options, key=lambda c: c.probability
                             - self.price_weight * (c.estimate.seconds or 0.0))
@@ -268,11 +273,22 @@ class Budgeted:
                 empty=float(candidate.rows == 0),
                 excess=float(not candidate.goal.many and candidate.rows > 1),
             )
+            before = candidate.probability
             candidate.probability = self.scorer.probability(candidate.features)
             trace.append({"step": "run", "sparql": candidate.sparql,
                           "observation": observation.summary(),
                           "p": round(candidate.probability, 3)})
-            if candidate.probability >= self.accept:
+            accepted = candidate.probability >= self.accept
+            if log is not None:
+                log({"phase": "run", "reading": candidate.reading, "sparql": candidate.sparql,
+                     "estimate": candidate.estimate.to_dict(), "seconds": round(seconds, 4),
+                     "ok": observation.ok, "error": observation.error,
+                     "rows": candidate.rows, "sample": observation.sample,
+                     "p_before": round(before, 4), "p": round(candidate.probability, 4),
+                     "features": dict(candidate.features), "accept": self.accept,
+                     "accepted": accepted, "spent": spent.to_dict(),
+                     "waiting": sum(1 for c in pool if not c.executed)})
+            if accepted:
                 return candidate
         return None
 
@@ -283,6 +299,87 @@ class Budgeted:
         if self.graph_seconds is not None and spent.seconds + seconds > self.graph_seconds:
             return False
         return True
+
+
+class Session:
+    """The state of planning one question: what was read, bound, run and spent."""
+
+    def __init__(self, planner, question, kg, context=None, explain=False):
+        question = (question or "").strip()
+        if not question:
+            raise ValueError("A question is required.")
+        self.planner = planner
+        self.question = question
+        self.context = as_context(context)
+        self.kg = kg = as_knowledge_graph(kg)
+        self.explorer = Explorer(kg, sample_size=planner.sample_size)
+        self.pricer = Pricer.for_kg(kg, self.explorer.expand)
+        self.explorer.verifier = Verifier.for_kg(kg, self.explorer.prefixes,
+                                                 self.pricer.statistics)
+        self.catalog = catalog_for(kg, self.explorer, self.pricer.statistics)
+        self.entities = self.explorer.linker.link(question)[: planner.max_entities]
+        self.spent, self.pool, self.trace, self.readings = Spent(), [], [], []
+        self.accepted = None
+        self.events = [] if explain else None
+
+    @property
+    def done(self):
+        return self.accepted is not None or self.spent.llm_calls >= self.planner.llm_calls
+
+    def next_prompt(self):
+        """The prompt for the next parse, or None when the session is done."""
+        if self.done:
+            return None
+        return prompt(self.question, self.kg.vocabulary, self.explorer, self.entities,
+                      self.context, feedback(self.readings, self.pool))
+
+    def take(self, reply):
+        """Bind, check, price and run what one model reply reads the question as."""
+        text = self.next_prompt()
+        self.spent.llm_calls += 1
+        number = len(self.readings)
+        try:
+            reading = parse_reading(reply)
+        except ValueError as exc:
+            self.readings.append({"error": f"invalid: {exc}"})
+            self.trace.append({"step": "parse", "observation": f"invalid: {exc}"})
+            self.log({"phase": "parse", "reading": number, "prompt": text, "reply": reply,
+                      "error": str(exc), "spent": self.spent.to_dict()})
+            return
+        self.log({"phase": "parse", "reading": number, "prompt": text, "reply": reply,
+                  "parsed": reading, "spent": self.spent.to_dict()})
+        log = self.log if self.events is not None else None
+        found, note = self.planner.bind(reading, number, self.catalog, self.explorer,
+                                        self.pricer, self.pool, log)
+        self.readings.append({**reading, "note": note})
+        self.trace.append({"step": "parse", "reading": reading, "observation": note})
+        self.pool.extend(found)
+        self.accepted = self.planner.select(self.pool, self.spent, self.explorer, self.pricer,
+                                            self.trace, log)
+
+    def result(self):
+        chosen = self.accepted or best(self.pool)
+        result = {
+            # No reading bound to a well-typed plan: abstain, and keep the trace.
+            "sparql": chosen.sparql if chosen else "",
+            "confidence": round(chosen.probability, 4) if chosen else 0.0,
+            "abstain": chosen is None or chosen.probability < self.planner.abstain,
+            "readings": len(self.readings),
+            "candidates": [c.to_dict() for c in self.pool],
+            "spent": self.spent.to_dict(),
+            "verifier_rejections": self.explorer.rejected,
+            "qerror": [round(e, 2) for e in self.pricer.errors],
+            "trace": self.trace,
+        }
+        self.log({"phase": "answer", "sparql": result["sparql"],
+                  "confidence": result["confidence"], "abstain": result["abstain"],
+                  "accepted": self.accepted is not None, "threshold": self.planner.abstain,
+                  "spent": self.spent.to_dict()})
+        return result
+
+    def log(self, event):
+        if self.events is not None:
+            self.events.append(event)
 
 
 def best(pool):
@@ -357,6 +454,23 @@ def prompt(question, vocabulary, explorer, entities, context, earlier=""):
 
 
 _COLLAPSE = 0.9  # a variant where a name written as a literal became its entity
+
+
+def _changes(given, repaired):
+    """What binding's repairs changed in a reading, and why."""
+    changes = []
+    before, after = (given.get("goal") or {}).get("type"), (repaired.get("goal") or {}).get("type")
+    if before != after:
+        changes.append({"before": f"type {before}", "after": "no type",
+                        "why": "the goal type names no class in the ontology"})
+    for old, new in zip(given.get("actions", []), repaired.get("actions", [])):
+        for key in ("pattern", "patterns", "branches"):
+            if key in old and old[key] != new.get(key):
+                why = ("a quoted value may name an entity: bind it, the literal first"
+                       if "[=" in json.dumps(new[key]) else
+                       "a guessed IRI the graph lacks becomes a phrase to bind")
+                changes.append({"before": old[key], "after": new[key], "why": why})
+    return changes
 
 
 def _log(value):
