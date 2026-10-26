@@ -81,6 +81,11 @@ class Catalog:
         for terms in self.names.values():
             for iri in [iri for iri in terms if iri.startswith(_CORE)]:
                 del terms[iri]
+        # Label properties are schema vocabulary too, but questions name things by them.
+        for iri in LABELS:
+            used = statistics.predicate(iri) if statistics is not None else None
+            if statistics is None or (used is not None and used.triples):
+                self.names["property"].setdefault(iri, set()).update({"label", "name"})
         for terms in self.names.values():
             for iri, names in terms.items():
                 names.add(local_name(iri))
