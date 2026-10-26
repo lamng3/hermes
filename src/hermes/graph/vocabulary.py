@@ -36,7 +36,7 @@ SELECT ?term ?label WHERE {
 
 def load_vocabulary(ontology_path, limit=60):
     """Vocabulary of one RDF file."""
-    from hermes.store import local_store
+    from hermes.graph.stores import local_store
 
     return vocabulary(local_store(ontology_path), declared_prefixes(ontology_path), limit)
 

@@ -69,7 +69,7 @@ class LocalStore(GraphStore):
         return self._graph
 
     def query(self, sparql):
-        from hermes.validate import _PARSE_LOCK  # rdflib's parser is not thread-safe
+        from hermes.sparql.validate import _PARSE_LOCK  # rdflib's parser is not thread-safe
 
         try:
             with _PARSE_LOCK:

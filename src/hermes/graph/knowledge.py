@@ -3,8 +3,8 @@
 from functools import cached_property
 from pathlib import Path
 
-from hermes.ontology import declared_prefixes, vocabulary
-from hermes.store import CachedStore, EndpointStore, local_store
+from hermes.graph.vocabulary import declared_prefixes, vocabulary
+from hermes.graph.stores import CachedStore, EndpointStore, local_store
 
 
 class KnowledgeGraph:

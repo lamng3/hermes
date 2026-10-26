@@ -1,11 +1,11 @@
 import json
 
 from conftest import ScriptedLLM
-from hermes.algebra import Explorer
-from hermes.binding import Catalog, Slot, assignments, similarity, slots, substitute
-from hermes.pricing import statistics_for
-from hermes.selection import Scorer
-from hermes.systems.budgeted import Budgeted
+from hermes.baselines.explorer import Explorer
+from hermes.baselines.binding import Catalog, Slot, assignments, similarity, slots, substitute
+from hermes.pricing.statistics import statistics_for
+from hermes.baselines.selection import Scorer
+from hermes.baselines.budgeted import Budgeted
 
 WINTER = {
     "goal": {"answer": ["?c"], "kind": "entity", "type": "[city]", "many": True},
@@ -121,8 +121,8 @@ def test_a_property_can_be_read_backwards(olympics):
 
 
 def test_repairs_for_what_small_models_write(olympics):
-    from hermes.binding import collapse_labels, drop_unbound_type, open_unknown
-    from hermes.binding import mentioned as exists
+    from hermes.baselines.binding import collapse_labels, drop_unbound_type, open_unknown
+    from hermes.baselines.binding import mentioned as exists
 
     explorer = Explorer(olympics)
     guessed = {"actions": [{"op": "triple", "pattern": "ex:LakePlacidCity [hosted] ?g"}]}

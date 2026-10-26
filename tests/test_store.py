@@ -6,7 +6,7 @@ import pytest
 
 from conftest import FIXTURES
 from hermes import KnowledgeGraph
-from hermes.store import CachedStore, EndpointStore, LocalStore, OxigraphStore, QueryError
+from hermes.graph.stores import CachedStore, EndpointStore, LocalStore, OxigraphStore, QueryError
 
 QUERY = """PREFIX ex: <http://example.org/olympics#>
 SELECT ?city WHERE { ?city ex:country ex:USA } ORDER BY ?city"""
@@ -124,7 +124,7 @@ def test_endpoint_store_refuses_huge_results():
 def test_timeout_store_kills_slow_queries_and_recovers():
     import time
 
-    from hermes.store import TimeoutStore
+    from hermes.graph.stores import TimeoutStore
 
     store = TimeoutStore([FIXTURES / "olympics.ttl"], timeout=2)
     assert values(store.query(QUERY))[0].endswith("Atlanta")

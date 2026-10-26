@@ -8,9 +8,9 @@ files (through pyoxigraph).
 
 import json
 
-from hermes.knowledge import KnowledgeGraph
-from hermes.ontology import prefixes_in
-from hermes.store import EMPTY, GraphStore, QueryError
+from hermes.graph.knowledge import KnowledgeGraph
+from hermes.graph.vocabulary import prefixes_in
+from hermes.graph.stores import EMPTY, GraphStore, QueryError
 
 JSON_RESULTS = "application/sparql-results+json"
 

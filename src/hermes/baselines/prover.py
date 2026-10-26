@@ -1,16 +1,16 @@
 """The prover: the algebra agent with the verifier.
 
 The model first states the goal (what the question asks for), then applies
-algebra actions. Before any plan runs, hermes.verifier checks it: scoping,
+algebra actions. Before any plan runs, hermes.sparql.verifier checks it: scoping,
 aggregation rules and schema typing. Ill-typed steps are rejected with the
 verifier's message and never reach the graph. Each turn shows the plan state
 (typing context and open goals), and `finish` is refused while a goal is open.
 """
 
-from hermes.algebra import Explorer
-from hermes.verifier import Verifier
+from hermes.baselines.explorer import Explorer
+from hermes.sparql.verifier import Verifier
 from hermes.systems import register
-from hermes.systems.algebra_agent import ACTIONS, AlgebraAgent
+from hermes.baselines.algebra_agent import ACTIONS, AlgebraAgent
 
 GOAL = """\
 State the goal first:

@@ -20,15 +20,15 @@ The Explorer applies actions and runs the plan after each one, reporting what
 happened: whether it parses, how many solutions it has, how that count moved,
 and a sample of rows. `preview` answers "what if I apply this?" without
 committing, the way an optimizer costs a rewrite before choosing it. A policy,
-LLM or search, chooses the actions; see hermes.systems.algebra_agent.
+LLM or search, chooses the actions; see hermes.baselines.algebra_agent.
 """
 
 import json
 import re
 from dataclasses import MISSING, dataclass, field, fields, replace
 
-from hermes.linking import linker_for
-from hermes.validate import parse_error
+from hermes.graph.linking import linker_for
+from hermes.sparql.validate import parse_error
 
 CORE_PREFIXES = (
     ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
@@ -451,7 +451,7 @@ class Explorer:
         return observation
 
     def state_goal(self, action):
-        from hermes.verifier import parse_goal
+        from hermes.sparql.verifier import parse_goal
 
         try:
             self.goal = parse_goal(action.to_dict())

@@ -20,8 +20,8 @@ import yaml
 
 from hermes import benchmarks
 from hermes.evaluation import score
-from hermes.selection import Scorer
-from hermes.store import QueryError
+from hermes.baselines.selection import Scorer
+from hermes.graph.stores import QueryError
 
 
 def examples(run, threshold):

@@ -1,10 +1,10 @@
 from pathlib import Path
 
 from hermes.context import Context, Example
-from hermes.ontology import load_vocabulary
-from hermes.systems.training_free import TrainingFree, build_prompt
-from hermes.stages import apply_stages
-from hermes.validate import lift_modifiers, parse_error
+from hermes.graph.vocabulary import load_vocabulary
+from hermes.baselines.training_free import TrainingFree, build_prompt
+from hermes.sparql.stages import apply_stages
+from hermes.sparql.validate import lift_modifiers, parse_error
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

@@ -3,9 +3,9 @@ import json
 import pytest
 
 from conftest import ScriptedLLM
-from hermes.algebra import Explorer, Plan, parse_action
-from hermes.verifier import Goal, Schema, Verifier
-from hermes.systems.prover import Prover
+from hermes.baselines.explorer import Explorer, Plan, parse_action
+from hermes.sparql.verifier import Goal, Schema, Verifier
+from hermes.baselines.prover import Prover
 
 EX = "http://example.org/olympics#"
 XSD = "http://www.w3.org/2001/XMLSchema#"
@@ -131,7 +131,7 @@ def test_entities_where_values_belong_and_literals_read_backwards(verifier):
 
 
 def test_ranges_the_ontology_omits_are_read_from_the_data(olympics):
-    from hermes.pricing import statistics_for
+    from hermes.pricing.statistics import statistics_for
 
     bare = Verifier(Schema(properties={EX + "hosted", EX + "season"}), PREFIXES,
                     kind_of=lambda iri: statistics_for(olympics).predicate(iri).kind)

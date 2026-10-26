@@ -30,10 +30,10 @@ from pathlib import Path
 import yaml
 
 from hermes import benchmarks, llm as llms, runtime, systems
-from hermes.costs import run_cost
+from hermes.pricing.prices import run_cost
 from hermes.context import Context, Example
 from hermes.evaluation import aggregate, score
-from hermes.store import QueryError
+from hermes.graph.stores import QueryError
 
 
 LIMITS = {
