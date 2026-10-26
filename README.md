@@ -4,7 +4,7 @@
 
 **Verified Query Planning over the SPARQL Algebra with Language Agents**
 
-[![Paper](https://img.shields.io/badge/paper-PDF-b31b1b)](paper/hermes.pdf)
+[![Write-up](https://img.shields.io/badge/write--up-PDF-b31b1b)](paper/hermes.pdf)
 [![Manual](https://img.shields.io/badge/docs-manual-8b5cf6)](https://lamng3.com/hermes/)
 [![Leaderboard](https://img.shields.io/badge/leaderboard-CK26%20%C2%B7%20DB26-f59e0b)](results/LEADERBOARD.md)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3b82f6)](pyproject.toml)
@@ -17,9 +17,11 @@
 <p align="center"><b>Lam Nguyen</b><br><sub>Case Western Reserve University</sub></p>
 
 > [!NOTE]
-> **Official implementation of the Hermes paper.** Results are preliminary; the
-> [paper](paper/hermes.pdf) and [leaderboard](results/LEADERBOARD.md) are updated
-> as runs finish. Install name `hermes-sparql`, import name `hermes`.
+> Hermes treats NL-to-SPARQL as query compilation: a question becomes a plan in
+> the SPARQL algebra, checked against the ontology before it reaches the graph.
+> Results are preliminary; the [write-up](paper/hermes.pdf) and
+> [leaderboard](results/LEADERBOARD.md) are updated as runs finish. Install name
+> `hermes-sparql`, import name `hermes`.
 
 ## ⚡ Quick start
 
@@ -88,7 +90,7 @@ question.
    a scorer that reproduces all 5,024 published Text2SPARQL 2026 scores, with
    strict and reproducible-subset variants (`hermes.evaluation`, `data/`).
 
-Preliminary results are in the [paper](paper/hermes.pdf) and the
+Preliminary results are in the [write-up](paper/hermes.pdf) and the
 [leaderboard](results/LEADERBOARD.md).
 
 Install name: `hermes-sparql`. Import name: `hermes`.
@@ -280,7 +282,7 @@ data/            normalized benchmarks and the graphs they run on (see data/READ
 configs/         one YAML file per experiment: benchmark x system x model
 experiments/     the protocol and the script that reproduces every result
 results/         run outputs, official peer scores, and LEADERBOARD.md
-paper/           VLDB-format paper (`hermes.tex`, built PDF)
+paper/           VLDB-format write-up (`hermes.tex`, built PDF) and research notes (`NOTES.md`)
 tests/           offline tests; no model or network needed
 ```
 
