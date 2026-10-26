@@ -1,7 +1,9 @@
 import pytest
 
-from hermes.algebra import Explorer, Plan, parse_action
-from hermes.pricing import Pricer, SecondsModel, Statistics, qerror, statistics_for
+from hermes.baselines.explorer import Explorer, Plan, parse_action
+from hermes.baselines.pricing import Pricer
+from hermes.pricing.seconds import SecondsModel
+from hermes.pricing.statistics import Statistics, qerror, statistics_for
 
 
 def plan(*actions):
@@ -21,7 +23,7 @@ def pricer(olympics):
 
 
 def count(kg, explorer, p):
-    from hermes.algebra import render
+    from hermes.baselines.explorer import render
 
     inner = render(p)
     rows = kg.query(f"{explorer.header}SELECT (COUNT(*) AS ?n) WHERE {{ {{ {inner} }} }}")

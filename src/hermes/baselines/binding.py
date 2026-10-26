@@ -18,8 +18,8 @@ import threading
 import weakref
 from dataclasses import dataclass
 
-from hermes.linking import LABELS, local_name, normalize
-from hermes.verifier import _TOKEN, TYPE, split_triples
+from hermes.graph.linking import LABELS, local_name, normalize
+from hermes.sparql.verifier import _TOKEN, TYPE, split_triples
 
 SLOT = re.compile(r"\[([^\[\]]+)\]")
 _PLACEHOLDER = "?hermes_slot{}"

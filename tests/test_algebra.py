@@ -1,8 +1,8 @@
 import json
 
 from conftest import ScriptedLLM
-from hermes.algebra import Explorer, Plan, parse_action, render
-from hermes.systems.algebra_agent import AlgebraAgent
+from hermes.baselines.explorer import Explorer, Plan, parse_action, render
+from hermes.baselines.algebra_agent import AlgebraAgent
 
 
 def act(explorer, **data):

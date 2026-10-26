@@ -31,10 +31,10 @@ from dataclasses import dataclass, field
 
 from hermes import llm as llms
 from hermes.context import as_context
-from hermes.knowledge import as_knowledge_graph
-from hermes.linking import linker_for, normalize
+from hermes.graph.knowledge import as_knowledge_graph
+from hermes.graph.linking import linker_for, normalize
 from hermes.systems import register
-from hermes.validate import parse_error
+from hermes.sparql.validate import parse_error
 
 _VARIABLE = re.compile(r"\?[A-Za-z_]\w*")
 CORE_PREFIXES = (

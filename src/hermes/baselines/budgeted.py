@@ -4,12 +4,12 @@ NL-to-SPARQL compiled like a database compiles SQL, except that the meaning
 is not fixed by the input, so the planner must choose which query to send:
 
 1. parse: the model reads the question into a goal and a plan of algebra
-   actions whose unresolved terms are phrases in brackets (hermes.binding);
+   actions whose unresolved terms are phrases in brackets (hermes.baselines.binding);
 2. bind: each phrase gets ranked properties, classes or entities, and the
    best joint assignments become candidate plans;
-3. check: hermes.verifier rejects ill-typed candidates before they run;
+3. check: hermes.sparql.verifier rejects ill-typed candidates before they run;
 4. price: hermes.pricing estimates each one's rows and cost;
-5. select: a learned estimate of correctness (hermes.selection), minus the
+5. select: a learned estimate of correctness (hermes.baselines.selection), minus the
    price, picks the next candidate to run; running it updates the estimate.
 
 The budget caps model calls (one parse each, the rest re-parses with what
@@ -24,17 +24,17 @@ import time
 from dataclasses import dataclass, replace
 
 from hermes import llm as llms
-from hermes.algebra import Explorer, Plan, Triple, parse_action, render
-from hermes.binding import (
+from hermes.baselines.explorer import Explorer, Plan, Triple, parse_action, render
+from hermes.baselines.binding import (
     assignments, catalog_for, collapse_labels, drop_unbound_type, mentioned, open_unknown, slots,
     substitute,
 )
 from hermes.context import as_context
-from hermes.knowledge import as_knowledge_graph
-from hermes.pricing import Pricer
-from hermes.selection import Scorer
+from hermes.graph.knowledge import as_knowledge_graph
+from hermes.baselines.pricing import Pricer
+from hermes.baselines.selection import Scorer
 from hermes.systems import register
-from hermes.verifier import KINDS, Verifier, parse_goal
+from hermes.sparql.verifier import KINDS, Verifier, parse_goal
 
 SYSTEM = (
     "You read questions as SPARQL query plans over a knowledge graph. "
@@ -395,7 +395,7 @@ def best(pool):
 
 
 def parse_reading(text):
-    from hermes.algebra import _first_json_object
+    from hermes.baselines.explorer import _first_json_object
 
     data = _first_json_object(text)
     if not isinstance(data.get("actions"), list) or not data["actions"]:

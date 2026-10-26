@@ -38,9 +38,9 @@ from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.plugins.sparql.parserutils import CompValue
 from rdflib.plugins.sparql.sparql import QueryContext
 
-from hermes.pricing import RANGE, EQUALITY, scan as scan_estimate, statistics_for
-from hermes.validate import _PARSE_LOCK
-from hermes.verifier import TYPE
+from hermes.pricing.statistics import EQUALITY, RANGE, scan as scan_estimate, statistics_for
+from hermes.sparql.validate import _PARSE_LOCK
+from hermes.sparql.verifier import TYPE
 
 SYMBOL = {
     "Join": "⋈", "LeftJoin": "⟕", "Filter": "σ", "Project": "π", "Distinct": "δ",

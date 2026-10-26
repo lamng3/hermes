@@ -2,14 +2,14 @@
 
 Each turn the model sees the question, the vocabulary, the current plan as
 SPARQL, and what every previous action did to the result (counts, samples,
-errors). It answers with one action from hermes.algebra. The loop ends on
+errors). It answers with one action from hermes.baselines.explorer. The loop ends on
 `finish` or after `max_steps`, and returns the last plan that ran.
 """
 
 from hermes import llm as llms
-from hermes.algebra import Explorer, Finish, parse_action, render
+from hermes.baselines.explorer import Explorer, Finish, parse_action, render
 from hermes.context import as_context
-from hermes.knowledge import as_knowledge_graph
+from hermes.graph.knowledge import as_knowledge_graph
 from hermes.systems import register
 
 SYSTEM = (

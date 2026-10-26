@@ -7,7 +7,7 @@ from pathlib import Path
 
 from hermes import ask, benchmarks, systems
 from hermes.context import Context, Example
-from hermes.knowledge import KnowledgeGraph
+from hermes.graph.knowledge import KnowledgeGraph
 
 
 def main(argv=None):
@@ -144,7 +144,7 @@ def main(argv=None):
 
 
 def _plan(args):
-    from hermes import relational as ra
+    from hermes.planner import relational as ra
 
     sparql = args.query or Path(args.file).read_text(encoding="utf-8")
     kg = benchmarks.graph(args.graph) if args.graph else KnowledgeGraph.from_files(*args.files)

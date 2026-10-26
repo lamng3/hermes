@@ -1,15 +1,15 @@
 """The training-free system: one draft from the vocabulary, then fixed stages.
 
 The draft is prompted from the ontology vocabulary and optional context, passed
-through the stages in hermes.stages, parse-checked, and repaired once.
+through the stages in hermes.sparql.stages, parse-checked, and repaired once.
 """
 
 from hermes import llm as llms
 from hermes.context import as_context
-from hermes.knowledge import as_knowledge_graph
-from hermes.stages import apply_stages
+from hermes.graph.knowledge import as_knowledge_graph
+from hermes.sparql.stages import apply_stages
 from hermes.systems import register
-from hermes.validate import parse_error, prepare_draft, repair_prompt
+from hermes.sparql.validate import parse_error, prepare_draft, repair_prompt
 
 
 @register("training-free")

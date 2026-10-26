@@ -5,8 +5,8 @@ import pytest
 
 import hermes
 from conftest import ScriptedLLM
-from hermes.systems import uniqgen
-from hermes.systems.uniqgen import UniQGen
+from hermes.baselines import uniqgen
+from hermes.baselines.uniqgen import UniQGen
 
 OLYMPICS = Path(__file__).parent / "fixtures" / "olympics.ttl"
 QUESTION = "Which cities in the USA have hosted the Olympics in February?"

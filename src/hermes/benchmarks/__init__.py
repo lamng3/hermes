@@ -21,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-from hermes.knowledge import KnowledgeGraph
+from hermes.graph.knowledge import KnowledgeGraph
 
 
 @dataclass

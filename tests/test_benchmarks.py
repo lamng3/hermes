@@ -281,7 +281,7 @@ def test_deadlines_stop_items_in_worker_threads(data, tmp_path):
 
 
 def test_run_cost_prices_hosted_models_and_times_local_ones(monkeypatch):
-    from hermes.costs import run_cost
+    from hermes.pricing.prices import run_cost
 
     hosted = {"model": "claude-opus-5-5", "provider": "anthropic", "items": 10, "llm_model_calls": 20,
               "input_tokens": 100_000, "output_tokens": 5_000, "llm_seconds": 40.0}
