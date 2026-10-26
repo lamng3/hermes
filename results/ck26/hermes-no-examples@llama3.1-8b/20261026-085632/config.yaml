@@ -1,0 +1,13 @@
+limits:
+  query_seconds: 30
+  item_seconds: 300
+system: hermes
+params:
+  llm_calls: 3
+  examples: 0
+benchmark: ck26
+name: hermes-no-examples@llama3.1-8b
+llm:
+  provider: ollama
+  model: llama3.1
+  cache: .cache/llm

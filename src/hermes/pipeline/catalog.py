@@ -1,13 +1,12 @@
 """The ontology catalog: every class and property a question may need, described.
 
-It plays the part of NL2KQL's semantic data catalog, with the ontology as
-the schema and the knowledge graph as the data. From the ontology: classes
+The ontology is the schema; the knowledge graph is the data. From the ontology: classes
 and properties with their labels, comments, declared domains and ranges.
 From the data (hermes.pricing.statistics, and for local graphs a few grouped
 queries): how often each term is used, which properties the instances of a
 class use, which classes a property's objects belong to, whether a property
 holds literals or entities, and the values of properties with few distinct
-literal values (NL2KQL's enum values), such as countries or currencies.
+literal values, such as countries or currencies.
 """
 
 import threading

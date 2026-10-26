@@ -1,0 +1,36 @@
+{
+  "config": "hermes@llama3.1-8b",
+  "benchmark": "ck26",
+  "system": "hermes",
+  "model": "llama3.1",
+  "provider": "ollama",
+  "llm_calls": 235,
+  "llm_cache_hits": 17,
+  "graph_executions": 1956,
+  "graph_seconds": 2.5,
+  "llm_model_calls": 218,
+  "input_tokens": 216960,
+  "output_tokens": 31432,
+  "llm_seconds": 1765.7,
+  "contaminated_examples": 0,
+  "limits": {
+    "query_seconds": 30,
+    "item_seconds": 300
+  },
+  "items": 100,
+  "wall_seconds": 21067.8,
+  "git_commit": "be5f5aa70331c1de65c11fb7d4b36f5578f7964e",
+  "git_dirty": false,
+  "python": "3.11.14",
+  "finished": "2026-10-26T08:56:32",
+  "cost": {
+    "cost_usd": null,
+    "cost_basis": "local, 351.1 GPU-min",
+    "gpu_hours": 5.8522,
+    "calls_per_item": 2.18,
+    "input_tokens_per_item": 2170,
+    "output_tokens_per_item": 314,
+    "llm_seconds_per_item": 17.66,
+    "cost_usd_per_item": null
+  }
+}

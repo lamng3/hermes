@@ -3,9 +3,8 @@
     hermes = Hermes(kg, llm=..., budget=Budget(llm_calls=3, rows=50_000))
     answer = hermes.ask("Which department does Ms. Brant belong to?")
 
-A question goes through the stages of NL2KQL (Tang et al., arXiv 2404.02933),
-with the ontology as the schema and the knowledge graph as the data, then
-through a query planner:
+A question goes through seven stages, with the ontology as the schema and the
+knowledge graph as the data:
 
 1. refine: the ontology slice the question needs (hermes.pipeline.refiner);
 2. examples: the few-shot examples closest to it (hermes.pipeline.fewshot);

@@ -1,10 +1,8 @@
 """Synthetic few-shot examples, generated from the graph itself.
 
-NL2KQL builds its few-shot database by having a model write queries over
-sampled tables, explain them as questions, and keep the pairs that survive a
-round trip. Here the queries come from templates over the ontology catalog,
-filled with sampled entities and listed values, and kept when they return
-between 1 and `MAX_ROWS` rows:
+Questions and queries over the graph, for the prompt's examples. The queries
+come from templates over the ontology catalog, filled with sampled entities
+and listed values, and are kept when they return between 1 and `MAX_ROWS` rows:
 
     attribute     SELECT ?v WHERE { <x> p ?v }                 p holds literals
     relation      SELECT ?y WHERE { <x> p ?y }                 p links entities

@@ -31,7 +31,7 @@ Try it without installing anything: [ask a question](https://lamng3.com/hermes/a
 
 ## How it works
 
-The pipeline follows NL2KQL ([Tang et al., arXiv 2404.02933](https://arxiv.org/abs/2404.02933)), which translates questions into Kusto queries over a database schema, with the ontology as the schema and the knowledge graph as the data, and adds a query planner and budgets.
+The ontology is the schema and the knowledge graph is the data. One model call writes the query; everything after it is checked, planned and priced before it costs anything.
 
 | Stage | What it does | Code |
 |---|---|---|
