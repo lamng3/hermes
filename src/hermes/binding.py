@@ -24,6 +24,7 @@ _PLACEHOLDER = "?hermes_slot{}"
 _LITERAL_SCORE = 0.3
 _INVERSE = 0.7  # a property read backwards
 _VALUE_SCORE = 0.9  # a literal the model wrote itself
+_TYPED = {"type", "instance of", "is a", "rdf type", "type of"}  # ways to write rdf:type
 _COLLAPSE = 0.9  # a name written as a literal, replaced by the entity it names
 _CORE = (  # the RDF, RDFS, OWL and XSD vocabularies describe schemas, not data
     "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -106,7 +107,7 @@ class Catalog:
 
     def _exact(self, phrase, kind):
         """A term written as such, [pv:memberOf] or [rdf:type], if the graph knows it."""
-        if kind == "property" and phrase in ("a", "rdf:type"):
+        if kind == "property" and (phrase in ("a", "rdf:type") or normalize(phrase) in _TYPED):
             return Candidate("a", 1.0, "type")
         if not _guessed_iri(phrase):
             return None
