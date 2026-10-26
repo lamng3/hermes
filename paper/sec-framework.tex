@@ -53,6 +53,50 @@ An action identical to the previous one is not executed.
 The loop ends on \kw{finish} or after the step budget $B$ (15), and returns
 the last committed plan that runs.
 
+\stitle{Budgeted planning}.
+A step-by-step policy spends one model call per operator.
+The budgeted planner instead compiles a question in five phases, the
+way a database compiles SQL, and spends a fixed budget of $B_M$ model
+calls and $B_E$ candidate executions where it helps most.
+(1)~\emph{Parse}: $M$ reads the question into a goal $g$ and a plan
+whose unresolved terms are phrases in brackets, \eg
+\kw{?c\ [hosted]\ ?g}.
+(2)~\emph{Bind}: like a binder resolving names against a catalog, each
+phrase receives ranked candidates from $O$ and the graph: a property in
+predicate position (or its inverse), a class after \kw{rdf{:}type} or in
+the goal, and an entity or value elsewhere.
+Binding also repairs what models commonly write: a guessed IRI the graph
+lacks becomes a phrase, and a label triple \kw{?v\ name\ ``X''} becomes
+the entity named X.
+The best joint assignments, ranked by the product of their scores
+$w(Q)$, are the candidate plans.
+(3)~\emph{Check}: the verifier rejects ill-typed candidates.
+Where $O$ declares no range, it uses the kind of the property's objects
+in the data, literal or entity.
+(4)~\emph{Price}: each candidate receives System~R
+estimates~\cite{selinger1979access}: rows from per-predicate and
+per-class counts under independence, and a cost $C(Q)$, the sum of the
+estimated sizes of its scans and joins, converted to seconds $\hat{t}(Q)$
+by a line fitted to observed executions.
+On the 44 single-pattern-group gold queries of CK26, the row estimate
+has a median q-error of 1.05 and a 90th percentile of 30.
+(5)~\emph{Select}: a logistic model estimates the probability $p(Q)$
+that a candidate answers the question from its binding score, verifier
+warnings and open goals, its estimated rows, and, once run, whether it
+returned rows and as many as $g$ asks for.
+The planner runs the candidate that maximizes $p(Q) - \lambda\,\hat{t}(Q)$,
+updates $p(Q)$ from the observation, and stops when $p(Q)$ exceeds a
+threshold.
+Otherwise it parses again, shown what earlier readings returned, until
+the budget is spent; each reading receives an equal share of the
+executions while model calls remain.
+It returns the most probable candidate and $p(Q)$ as its confidence,
+so answers below a threshold can be withheld.
+The weights of $p$ are set by hand and can be fitted to logged
+candidates scored against gold.
+\warn{[Results of the budgeted planner on CK26 and DB26, accuracy
+against budget, and selective accuracy: pending.]}
+
 \stitle{Other policies in the same space}.
 Existing generators are policies over these actions.
 One-shot generation is a single macro action that sets every field of

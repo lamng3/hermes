@@ -39,11 +39,29 @@ from an LLM, rendering it to SPARQL or Cypher~\cite{wang2026uniqgen}.
 the SPARQL algebra rather than a query string or a constraint table,
 checked against the schema before execution and observed after it.
 
+\stitle{Grounding and selection}.
+KB-BINDER drafts a logical form with an LLM and binds its terms to the
+knowledge base by lexical matching~\cite{li2023kbbinder}, and Pangu lets
+a symbolic agent propose only valid plans while the language model scores
+them~\cite{gu2023pangu}.
+CHASE-SQL generates SQL candidates along several reasoning paths and
+selects one with a trained pairwise selector~\cite{pourreza2025chasesql},
+and ThriftLLM chooses which LLMs to query for classification under a cost
+budget from their estimated success rates~\cite{huang2025thriftllm}.
+The budgeted planner of Section~\ref{sec-framework} combines the two
+lines: candidates are bound to the ontology and type-checked, then
+chosen by an estimate of correctness net of an estimated execution
+price, under a budget of model calls and executions.
+
 \stitle{Query optimization and SPARQL semantics}.
 Cost-based optimizers choose among algebraically equivalent plans by
 estimating the effect of each operator~\cite{selinger1979access}, and
 cardinality estimates dominate the quality of the chosen
 plan~\cite{leis2015good}.
+Learned components now steer existing optimizers~\cite{marcus2021bao}
+and estimate the cardinality of knowledge-graph
+queries~\cite{davitkova2022lmkg,schwabe2024gnce}; \hermes prices
+candidate queries with classical estimates and could use either.
 Chase and Backchase reformulates queries under constraints and
 minimizes them~\cite{deutsch1999chase}.
 Pérez et al.\ gave SPARQL a compositional semantics and characterized
