@@ -26,7 +26,7 @@ from dataclasses import dataclass, replace
 from hermes import llm as llms
 from hermes.algebra import Explorer, Plan, Triple, parse_action, render
 from hermes.binding import (
-    Catalog, assignments, collapse_labels, drop_unbound_type, mentioned, open_unknown, slots,
+    assignments, catalog_for, collapse_labels, drop_unbound_type, mentioned, open_unknown, slots,
     substitute,
 )
 from hermes.context import as_context
@@ -128,7 +128,7 @@ class Budgeted:
         explorer = Explorer(kg, sample_size=self.sample_size)
         pricer = Pricer.for_kg(kg, explorer.expand)
         explorer.verifier = Verifier.for_kg(kg, explorer.prefixes, pricer.statistics)
-        catalog = Catalog(kg, explorer, pricer.statistics)
+        catalog = catalog_for(kg, explorer, pricer.statistics)
         entities = explorer.linker.link(question)[: self.max_entities]
         spent, pool, trace, readings = Spent(), [], [], []
         accepted = None
