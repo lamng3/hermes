@@ -25,6 +25,7 @@ import time
 from dataclasses import dataclass, field
 
 from hermes.graph.knowledge import as_knowledge_graph
+from hermes.llm import NeedReply
 from hermes.pipeline.catalog import catalog_for
 from hermes.pipeline.events import Event, Recorder
 from hermes.pipeline.fewshot import FewShotSelector, FewShotStore
@@ -247,6 +248,8 @@ class Hermes:
             self.emit(Event(stage.name, "start"))
             try:
                 data = stage.run(state, self)
+            except NeedReply:
+                raise  # the caller supplies the reply and runs the question again
             except BudgetExceeded as exc:
                 answer.error = f"over budget at {exc.stage}: {exc.reason}"
             except UnsupportedQuery as exc:

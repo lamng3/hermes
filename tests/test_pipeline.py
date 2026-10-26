@@ -115,3 +115,22 @@ def test_few_shots_are_chosen_by_their_questions():
     assert FewShotSelector(store, k=1)("Which city hosted the 1980 games?")[0].sparql == "SELECT 1"
     prompt = PromptBuilder().instructions().examples(store.examples).question("Q?").build()
     assert prompt.index("Examples") < prompt.index("Question: Q?")
+
+
+def test_a_page_can_drive_the_pipeline_one_reply_at_a_time(olympics):
+    import pytest
+
+    from hermes.llm import NeedReply, ReplayLLM
+
+    replies = []
+    while True:
+        try:
+            answer = Hermes(olympics, llm=ReplayLLM(replies)).ask(
+                "Which cities hosted the Winter Olympics?")
+            break
+        except NeedReply as need:
+            assert "Question: Which cities hosted the Winter Olympics?" in need.prompt
+            replies.append(WINTER)
+    assert len(replies) == 1 and len(answer.rows) == 6
+    with pytest.raises(NeedReply):
+        Hermes(olympics, llm=ReplayLLM()).ask("Which cities hosted the Winter Olympics?")
