@@ -1,20 +1,19 @@
-"""A kernel for SPARQL plans: goals, typing and well-formedness, checked
+"""The verifier: goals, typing and well-formedness of a plan, checked
 before anything runs.
 
-The design follows interactive theorem provers such as Lean. A question is
-stated as a goal (the theorem); algebra actions are tactics; the kernel checks
-every step and reports the proof state: a typing context of variables and the
-goals still open. A plan the kernel rejects never reaches the graph, and
-`finish` succeeds only when no goal is open.
+It plays the role of a database's binder and semantic analyzer, with the
+ontology as the catalog. A question's goal states what must be returned; the
+verifier resolves every term of a plan against the schema, infers a typing
+context, and lists the goals the plan does not yet meet. It is a pure
+function, `Verifier.check(plan, goal)`: it never touches the graph, and a plan
+it rejects is never run.
 
-    Lean                     Hermes
-    theorem statement        Goal: answer variables, kind, type, cardinality
-    tactic                   algebra action (hermes.algebra)
-    local context            Γ: variable -> inferred classes or datatypes
-    kernel                   Kernel.check(plan, goal)
-    "unknown identifier"     a term outside the schema's namespaces
-    type mismatch            domain/range violations, literals as subjects
-    goals accomplished       no errors and no open goals
+    Database binder           Hermes verifier
+    catalog                   Schema: classes, properties, domains, ranges
+    name resolution           a term outside the schema's namespaces is unknown
+    type checking             domain/range violations, literals as subjects
+    output columns            Goal: answer variables, kind, type, cardinality
+    bound query               no errors and no open goals
 
 Typing judgments come from the schema: `?x a C` gives `?x : C`, and a triple
 `?x p ?y` gives `?x : domain(p)` and `?y : range(p)`. Classes are compared up
@@ -149,7 +148,7 @@ class Schema:
         return _namespace(iri) in self.namespaces
 
 
-class Kernel:
+class Verifier:
     """Check a plan against the schema and the goal. Nothing is executed."""
 
     def __init__(self, schema, prefixes):

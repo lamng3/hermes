@@ -78,7 +78,7 @@ question.
 1. **A typed SPARQL algebra.** Query plans are terms of the SPARQL 1.1
    algebra. The RDF schema induces a type for every variable, and
    well-formedness and typing rules decide, without evaluating a plan,
-   whether it is valid (`hermes.kernel`).
+   whether it is valid (`hermes.verifier`).
 2. **Verified query planning.** Actions are algebra operators; after each
    one the planner observes the number of solutions, how it changed, a sample
    of rows, and any error. A plan is accepted only when it is valid and
@@ -168,7 +168,7 @@ and `triple` actions.
 <details>
 <summary><b>The verifier</b></summary>
 
-`hermes.kernel` checks a plan against the RDF schema and a stated goal before
+`hermes.verifier` checks a plan against the RDF schema and a stated goal before
 anything runs. `?x a C` gives `?x : C`, and `?x p ?y` gives `?x` the domain of
 `p` and `?y` its range, compared up to `rdfs:subClassOf`. Unknown terms,
 literals where entities are required, unbound variables, and ungrouped

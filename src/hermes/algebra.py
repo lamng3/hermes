@@ -402,7 +402,7 @@ class Observation:
 class Explorer:
     """Apply actions to a plan and observe their effect on the graph."""
 
-    def __init__(self, kg, sample_size=5, kernel=None):
+    def __init__(self, kg, sample_size=5, verifier=None):
         self.kg = kg
         self.sample_size = sample_size
         self.goal = None
@@ -416,7 +416,7 @@ class Explorer:
         self.plans = [Plan()]
         self.counts = [None]
         self.history = []
-        self.kernel = kernel(self) if callable(kernel) else kernel
+        self.verifier = verifier(self) if callable(verifier) else verifier
 
     @property
     def plan(self):
@@ -451,13 +451,13 @@ class Explorer:
         return observation
 
     def state_goal(self, action):
-        from hermes.kernel import parse_goal
+        from hermes.verifier import parse_goal
 
         try:
             self.goal = parse_goal(action.to_dict())
         except ValueError as exc:
             return Observation(str(action), ok=False, error=str(exc))
-        judgment = self.kernel.check(self.plan, self.goal) if self.kernel else None
+        judgment = self.verifier.check(self.plan, self.goal) if self.verifier else None
         return Observation(str(action), note=f"goal: {self.goal.describe()}", judgment=judgment)
 
     def undo(self):
@@ -467,13 +467,15 @@ class Explorer:
         return self.observe(self.plan, "undo")
 
     def observe(self, plan, label="", previous=None):
-        judgment = self.kernel.check(plan, self.goal) if self.kernel else None
+        judgment = self.verifier.check(plan, self.goal) if self.verifier else None
         if plan.empty:
             return Observation(label, ok=False, error="the plan has no triple pattern yet",
                                judgment=judgment)
         sparql = render(plan, self.header)
         if judgment is not None and not judgment.ok:
             self.rejected += 1
+            # The "kernel:" prefix predates the rename; models have seen it in every
+            # cached prover prompt, so changing it would stop those runs replaying.
             return Observation(label, sparql, ok=False,
                                error="kernel: " + "; ".join(judgment.errors), judgment=judgment)
         error = parse_error(sparql)

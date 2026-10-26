@@ -1,15 +1,14 @@
-"""The prover: the algebra agent with a kernel, in the style of Lean.
+"""The prover: the algebra agent with the verifier.
 
 The model first states the goal (what the question asks for), then applies
-algebra actions as tactics. Before any plan runs, hermes.kernel checks it:
-scoping, aggregation rules and schema typing. Ill-typed steps are rejected
-with the kernel's message and never reach the graph. Each turn shows the proof
-state (typing context and open goals), and `finish` is refused while a goal
-is open.
+algebra actions. Before any plan runs, hermes.verifier checks it: scoping,
+aggregation rules and schema typing. Ill-typed steps are rejected with the
+verifier's message and never reach the graph. Each turn shows the plan state
+(typing context and open goals), and `finish` is refused while a goal is open.
 """
 
 from hermes.algebra import Explorer
-from hermes.kernel import Kernel
+from hermes.verifier import Verifier
 from hermes.systems import register
 from hermes.systems.algebra_agent import ACTIONS, AlgebraAgent
 
@@ -33,7 +32,7 @@ class Prover(AlgebraAgent):
 
     def explorer_for(self, kg):
         return Explorer(kg, sample_size=self.sample_size,
-                        kernel=lambda explorer: Kernel.for_kg(kg, explorer.prefixes))
+                        verifier=lambda explorer: Verifier.for_kg(kg, explorer.prefixes))
 
     def state(self, explorer):
         if explorer.goal is None:
@@ -52,5 +51,5 @@ class Prover(AlgebraAgent):
         return None
 
     def report(self, explorer):
-        return {"kernel_rejections": explorer.rejected,
+        return {"verifier_rejections": explorer.rejected,
                 "goal": explorer.goal.describe() if explorer.goal else ""}

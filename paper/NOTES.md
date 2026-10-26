@@ -36,19 +36,20 @@ Hermes' mapping, with the ontology as catalog and the KG as a black-box endpoint
 |---|---|
 | Parse | LLM parses the question into an unbound logical form (algebra with phrase leaves) |
 | Bind | phrases bound to ontology terms and KG entities; only referenced slots are retrieved |
-| Type check | domain/range and subclass checks (`src/hermes/kernel.py`) |
+| Type check | domain/range and subclass checks (`src/hermes/verifier.py`) |
 | Rewrite | rewrites that preserve meaning under the ontology (subclass, subproperty, inverse) |
 | Cost model | price of each query and probe, and a learned estimate of whether it is correct |
 | Plan | SPARQL plus a certificate (span → operator → binding, typing, probe evidence) |
 
-## 2. What the "kernel" is
+## 2. The verifier (formerly the "kernel")
 
-`kernel.py` is not a process. It is a pure, side-effect-free checker:
-`Kernel.check(plan, goal)` returns errors, a typing context Γ and the open
-goals, and never touches the graph. "Kernel" is meant in the theorem-prover
-sense (the small trusted core every step must pass), not the operating-system
-sense. In database terms it is the binder and semantic analyzer. The write-up
-already calls it the verifier (Algorithm `Verify`).
+`src/hermes/verifier.py` is not a process. It is a pure checker:
+`Verifier.check(plan, goal)` returns errors, a typing context Γ and the open
+goals, and never touches the graph. In database terms it is the binder and
+semantic analyzer, with the ontology as the catalog. It was called the kernel,
+after the small trusted core of a theorem prover, and was renamed to match the
+write-up. Rejection messages shown to the model still begin with `kernel:` so
+that cached prover runs replay unchanged.
 
 ## 3. Candidate contributions
 
@@ -98,7 +99,7 @@ right.
 | 2026-10-25 | README frames Hermes as query compilation, not "the paper" | done |
 | 2026-10-25 | Main contribution: C1 (optimizer) or C2 (budgeted selection) | open, leaning C2 |
 | 2026-10-25 | Implementation stays in Python unless C1 is pursued | proposed |
-| 2026-10-25 | Rename `kernel.py` to `verifier.py` to match the write-up | proposed |
+| 2026-10-25 | Rename `kernel.py` to `verifier.py` to match the write-up | done |
 | 2026-10-25 | Planning order: parse → bind → check → price → select (not trial and error on execution) | proposed |
 
 ## 6. Survey
