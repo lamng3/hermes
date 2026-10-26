@@ -129,6 +129,42 @@ Development on CK26 items 1–10 with llama3.1 8B, 20 questions, set F1:
 label triples) → 0.200 (value slots, data-derived ranges, execution shares).
 Those items informed the design, so the full-run report separates them.
 
+Full runs (2026-10-25, llama3.1 8B, report in
+`results/reports/2026-10-25-budgeted-llama31.md`):
+
+| | CK26 all | CK26 held-out (Q11–50) | calls/item | DB26 |
+|---|--:|--:|--:|--:|
+| training-free | 0.017 | 0.009 | 1.16 | 0.017 |
+| uniqgen | 0.064 | 0.062 | 1.98 | – |
+| algebra-agent | 0.094 | 0.081 | 14.51 | – |
+| budgeted | 0.111 | 0.089 | 2.15 | 0.007 |
+
+What this says:
+
+- **Selection is not the bottleneck; generation is.** On CK26 the chosen
+  candidates score 0.111 and the best candidate ever generated 0.113. A
+  better selector cannot add accuracy until binding and parsing produce the
+  right query; 40 of 100 items had no well-typed candidate at all.
+- **Confidence is informative.** The top 10% of executed candidates by p
+  average F1 0.425 (all: 0.047); the 27% of items not abstained on score 0.411.
+  Selective accuracy is a real result to report.
+- **The cross-benchmark selector fit is not possible yet.** DB26 has 1
+  correct executed candidate out of 527, so there is nothing to fit on;
+  fitting on CK26 and testing on DB26 would not help either, since DB26's
+  candidates are wrong, not mis-ranked.
+- **DB26 fails at reading, not binding.** Binding resolves common DBpedia
+  terms (dbo:birthPlace, dbr:Mark_Twain); the model's readings of the longer
+  DB26 questions rarely have the right structure.
+
+Next, in order of expected gain:
+
+1. Coverage: why 40 CK26 items bind nothing (goal/answer mismatches, unknown
+   phrases), and a fallback reading when binding fails.
+2. Accuracy against budget: vary `llm_calls` and `executions` to draw the
+   anytime curve (the write-up marks it pending).
+3. A stronger reader (Qwen3-14B on Modal, as in the size study) to see whether
+   DB26 is a model limit.
+
 ## 7. Survey
 
 ✓ means the venue and authors were checked against the publisher or arXiv on

@@ -243,6 +243,7 @@ model predicts.
 count, the change in count, the row sample, and the error message.]}
 
 \subsection{RQ3: Time and Cost}
+\label{sec-exp-rq3}
 
 Table~\ref{tab-cost} reports the cost of every run; Figure~\ref{fig-cost}(a)
 sets accuracy against model calls, and Figure~\ref{fig-cost}(b) shows
@@ -260,6 +261,49 @@ The comparison in Table~\ref{tab-main} is therefore not at equal model
 budget.
 \warn{[Pending: budget-matched comparison, \eg CGS or OneShot with
 self-consistency at 15 calls per item.]}
+
+\stitle{Budgeted planning}.
+Table~\ref{tab-budget} runs the budgeted planner of
+Section~\ref{sec-framework} with Llama~3.1 8B~\cite{grattafiori2024llama3},
+served locally through Ollama~\cite{ollama}, against the other methods
+under the same model, with a budget of three model calls and eight
+candidate executions per item.
+Its binding repairs were designed while reading the traces of CK26
+questions 1 to 10, so the table also reports questions 11 to 50 (80 items)
+as a held-out split.
+On that split the planner scores 0.089, against 0.081 for \hermes{}$^-$,
+with 2.15 model calls per item instead of 14.51, in half the wall time;
+the difference is small for 80 items.
+Selection is not the bottleneck: the chosen candidates score 0.111, and
+the best candidate the planner ever generated would score 0.113.
+The confidence $p(Q)$ ranks candidates well: the top tenth of executed
+candidates by $p$ have a mean $F_1$ of 0.425, against 0.047 for all of
+them, and the 27 items the planner does not abstain on score 0.411.
+What is missing is coverage: on 40 items no reading bound to a
+well-typed plan.
+On DB26 the planner scores 0.007, below OneShot (0.017); binding resolves
+common DBpedia terms, but the model's readings of these longer questions
+rarely contain the right structure, and only 1 of 527 executed
+candidates is correct, too few to fit the selector.
+
+\begin{table}[t]
+  \caption{Budgeted planning on CK26 with Llama~3.1 8B. Held-out is
+    questions 11--50 (80 items); Calls is model calls per item; Time is
+    the run's wall time in minutes.}
+  \label{tab-budget}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Method & $F_1$ & Held-out $F_1$ & Calls & Time \\
+    \midrule
+    OneShot & 0.017 & 0.009 & 1.16 & 6.2 \\
+    CGS & 0.064 & 0.062 & 1.98 & 35.6 \\
+    \hermes{}$^-$ & 0.094 & 0.081 & 14.51 & 40.4 \\
+    \rowcolor{hermesbg} Budgeted & \textbf{0.111} & \textbf{0.089} & 2.15 & 21.2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \stitle{Time}.
 Because the server batches 16 items at a time, every run of 100 items
