@@ -168,3 +168,9 @@ def test_a_session_explains_every_phase(olympics):
     assert run["accepted"] and run["rows"] == 6 and run["p"] > run["p_before"]
     assert session.done and session.next_prompt() is None
     assert cities(olympics, result["sparql"]) == WINTER_CITIES
+
+
+def test_label_phrases_bind_to_the_label_properties_the_data_uses(olympics):
+    found = catalog(olympics)
+    assert found.rank(Slot("label", "property"))[0].term == "rdfs:label"
+    assert "skos:prefLabel" not in [c.term for c in found.rank(Slot("label", "property"))]
