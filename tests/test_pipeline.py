@@ -152,3 +152,9 @@ def test_synthetic_examples_survive_only_a_round_trip(olympics):
     assert tried >= len(kept) and all(e.meta["roundtrip_f1"] >= 0.7 for e in kept)
     none, _ = maker.build(2, lambda question: "", attempts=3)
     assert none == []
+
+
+def test_a_selected_variable_must_be_bound(olympics):
+    refined = QueryRefiner(catalog_for(olympics), Prefixes.of(olympics))(
+        "PREFIX ex: <%s> SELECT ?c ?name WHERE { ?c ex:hosted ?g }" % EX)
+    assert refined.problems == ["?name is selected but no pattern binds it"]

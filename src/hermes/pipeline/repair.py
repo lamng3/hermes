@@ -168,6 +168,10 @@ class QueryRefiner:
         except UnsupportedQuery as exc:
             return [str(exc)]
         problems = []
+        bound = _bound(query.root)
+        for variable in query.variables:
+            if variable not in bound:
+                problems.append(f"?{variable} is selected but no pattern binds it")
         for scan in _scans(query.root):
             if not isinstance(scan.p, URIRef):
                 continue
@@ -210,6 +214,17 @@ class QueryRefiner:
 
 _SCHEMA = ("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "http://www.w3.org/2000/01/rdf-schema#",
            "http://www.w3.org/2002/07/owl#")
+
+
+def _bound(node):
+    """Variables the query's WHERE clause can bind, including aggregates' and BIND's."""
+    from hermes.planner.algebra import Op, variables
+
+    found = set(variables(node))
+    if isinstance(node, Op):
+        for child in node.children:
+            found |= _bound(child)
+    return found
 
 
 def _scans(node):
