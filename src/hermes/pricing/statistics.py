@@ -112,12 +112,13 @@ def statistics_for(kg):
         return stats
 
 
-def scan(stats, subject, predicate, value, prop, cls=None, unknown=None):
+def scan(stats, subject, predicate, value, prop, cls=None, unknown=None, count=None):
     """System R estimate of one triple pattern: its rows, and distinct values per variable.
 
     `subject`, `predicate` and `value` are the pattern's terms as written, where
     variables start with ? or $. `prop` is the predicate's IRI, or None for a
-    variable or a path; `cls` is the class IRI of `?x rdf:type C`. Terms the
+    variable or a path; `cls` is the class IRI of `?x rdf:type C`; `count`, when
+    given, is the pattern's Count (a path's, estimated by the caller). Terms the
     store could not count are appended to `unknown` and priced with a default.
     """
     unknown = [] if unknown is None else unknown
@@ -128,7 +129,9 @@ def scan(stats, subject, predicate, value, prop, cls=None, unknown=None):
             count = DEFAULT_ROWS
         rows = count if _variable(subject) else min(1.0, count)
         return rows, _distinct({subject: rows} if _variable(subject) else {})
-    if prop is None:
+    if count is not None:
+        pass
+    elif prop is None:
         total = stats.everything()
         if total is None:
             unknown.append(predicate)
