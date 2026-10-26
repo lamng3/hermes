@@ -2,7 +2,7 @@
 
 # 🪽 Hermes
 
-**Verified Query Planning over the SPARQL Algebra with Language Agents**
+**SPARQL as relational algebra, optimized with the knowledge graph's statistics**
 
 [![Write-up](https://img.shields.io/badge/write--up-PDF-b31b1b)](paper/hermes.pdf)
 [![Manual](https://img.shields.io/badge/docs-manual-8b5cf6)](https://lamng3.com/hermes/)
@@ -298,7 +298,7 @@ tests/           offline tests; no model or network needed
 
 ```bibtex
 @misc{nguyen2026hermes,
-  title  = {Hermes: Verified Query Planning over the SPARQL Algebra with Language Agents},
+  title  = {Hermes},
   author = {Nguyen, Lam},
   year   = {2026},
   url    = {https://github.com/lamng3/hermes}
