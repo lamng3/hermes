@@ -5,8 +5,7 @@ Repairs, cheapest first, each recorded:
 1. rules: declare the prefixes the query uses but forgot, and move ORDER BY,
    LIMIT and the like out of the WHERE block (hermes.sparql.validate);
 2. unknown terms: a property or class the catalog does not know is replaced
-   by the closest one when they are close enough (NL2KQL does this by
-   embeddings with a threshold of 0.9; here by name similarity);
+   by the closest one when their names are close enough;
 3. guessed entities: an entity IRI the graph does not mention is replaced by
    the entity whose label matches its name;
 4. the model: a query that still does not parse, that the type check

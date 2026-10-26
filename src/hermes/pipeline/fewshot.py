@@ -4,7 +4,7 @@ A store holds examples in a JSON Lines file per graph (data/fewshot/<graph>.json
 each with its source: "synthetic" for pairs generated from the graph itself
 (hermes.pipeline.synthetic), never from benchmark questions, so they cannot
 leak a test answer. The selector ranks them by the similarity of their
-questions to the new one and keeps the best `k` (NL2KQL keeps two).
+questions to the new one and keeps the best `k` (two by default).
 """
 
 import json
