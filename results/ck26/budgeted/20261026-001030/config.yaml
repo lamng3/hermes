@@ -1,0 +1,10 @@
+benchmark: ck26
+system: budgeted
+params:
+  llm_calls: 3
+  executions: 8
+llm:
+  provider: ollama
+  model: llama3.1
+  cache: .cache/llm
+name: budgeted

@@ -1,0 +1,36 @@
+{
+  "config": "budgeted",
+  "benchmark": "ck26",
+  "system": "budgeted",
+  "model": "llama3.1",
+  "provider": "ollama",
+  "llm_calls": 264,
+  "llm_cache_hits": 145,
+  "graph_executions": 818,
+  "graph_seconds": 4.3,
+  "llm_model_calls": 119,
+  "input_tokens": 149464,
+  "output_tokens": 17489,
+  "llm_seconds": 882.6,
+  "contaminated_examples": 0,
+  "limits": {
+    "query_seconds": 30,
+    "item_seconds": 300
+  },
+  "items": 100,
+  "wall_seconds": 930.3,
+  "git_commit": "6e31e4e195a2313f9cffc9d5ce03db97359f760b",
+  "git_dirty": false,
+  "python": "3.11.14",
+  "finished": "2026-10-26T00:26:00",
+  "cost": {
+    "cost_usd": null,
+    "cost_basis": "local, 15.5 GPU-min",
+    "gpu_hours": 0.2584,
+    "calls_per_item": 1.19,
+    "input_tokens_per_item": 1495,
+    "output_tokens_per_item": 175,
+    "llm_seconds_per_item": 8.83,
+    "cost_usd_per_item": null
+  }
+}
