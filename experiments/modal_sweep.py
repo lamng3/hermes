@@ -1,6 +1,6 @@
 """Run a Hermes sweep on Modal instead of your laptop.
 
-    modal run experiments/modal_sweep.py --file configs/sweeps/paper.yaml --only @qwen
+    modal run experiments/modal_sweep.py --file configs/sweeps/baselines.yaml --only @qwen
 
 The sweep runs in a Modal container (CPU only: the models are behind APIs or
 a vLLM server from deploy/modal_vllm.py), so long runs do not hold your

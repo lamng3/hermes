@@ -1,14 +1,18 @@
 # Experiments
 
-`bash experiments/run_all.sh` reproduces every run in `results/`, then
-rewrites `results/LEADERBOARD.md`. Pass config paths to run a subset.
+`hermes sweep configs/sweeps/hermes.yaml` runs Hermes, its ablations and two
+baselines on CK26 and DB26; `hermes report --write` rewrites
+`results/LEADERBOARD.md`. `bash experiments/run_all.sh` reproduces every run
+in `results/`; pass config paths to run a subset.
 
-`python experiments/figures.py` (with the `figures` extra installed) rebuilds
-the paper's figures in `paper/fig/` from the latest finished run of each
-configuration, so the charts follow the results.
-`python experiments/tables.py` does the same for the result tables
-(`paper/tab-*.tex`). `results/reports/` records each study's config,
-runs, and results.
+- `planner_study.py`: plans every gold query of a benchmark as written and
+  optimized, runs both, and checks their answers against the engine
+  (`results/planner/`).
+- `check_scorer.py`: checks that the scorer reproduces the official
+  Text2SPARQL 2026 scores.
+- `fit_selector.py`: fits the budgeted baseline's selector from its logged
+  candidates.
+- `modal_sweep.py`: runs a sweep on Modal GPUs.
 
 ## Where to run
 
@@ -49,27 +53,27 @@ then use `llm: {provider: vllm, model: Qwen/Qwen2.5-7B-Instruct, base_url: ${HER
 and the reply cache are kept in Modal Volumes, and rerunning resumes.
 
 ```bash
-modal run experiments/modal_sweep.py --file configs/sweeps/paper.yaml --only @qwen
+modal run experiments/modal_sweep.py --file configs/sweeps/baselines.yaml --only @qwen
 modal volume get hermes-results / results/ --force
 ```
 
 ## Sweeps
 
-`configs/sweeps/paper.yaml` is the paper's grid. A sweep lists benchmarks,
+`configs/sweeps/baselines.yaml` is the baselines' grid. A sweep lists benchmarks,
 systems (an ablation is one more entry with a name), and models, plus shared
 settings; every combination becomes a run named `system@model`.
 
 ```bash
-hermes sweep configs/sweeps/paper.yaml --list           # what would run
-hermes sweep configs/sweeps/paper.yaml --only @gpt      # a slice
-hermes sweep configs/sweeps/paper.yaml --limit 5        # a smoke test
+hermes sweep configs/sweeps/baselines.yaml --list           # what would run
+hermes sweep configs/sweeps/baselines.yaml --only @gpt      # a slice
+hermes sweep configs/sweeps/baselines.yaml --limit 5        # a smoke test
 ```
 
 Finished runs are skipped, unfinished runs resume, and a failing
 configuration does not stop the others. To redo runs, for example after a fix, pass `--fresh`. It starts
 new timestamped runs and leaves the old ones in place. Reports and figures
 read the newest finished run. Never delete a run folder: commit finished
-runs, so every number in the paper can be traced to its predictions.
+runs, so every number can be traced to its predictions.
 `results/archive/` records runs whose folders were lost.
 
 ## Limits
