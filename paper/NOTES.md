@@ -97,12 +97,39 @@ right.
 | Date | Decision | Status |
 |---|---|---|
 | 2026-10-25 | README frames Hermes as query compilation, not "the paper" | done |
-| 2026-10-25 | Main contribution: C1 (optimizer) or C2 (budgeted selection) | open, leaning C2 |
-| 2026-10-25 | Implementation stays in Python unless C1 is pursued | proposed |
+| 2026-10-25 | Main contribution: C2 (budgeted selection), with C1's estimator as its pricing | decided |
+| 2026-10-25 | Implementation stays in Python unless C1 is pursued | decided |
 | 2026-10-25 | Rename `kernel.py` to `verifier.py` to match the write-up | done |
-| 2026-10-25 | Planning order: parse → bind → check → price → select (not trial and error on execution) | proposed |
+| 2026-10-25 | Planning order: parse → bind → check → price → select (not trial and error on execution) | done: `budgeted` system |
+| 2026-10-25 | Query pricing: System R statistics, C_out cost, seconds fitted online (`src/hermes/pricing.py`) | done |
+| 2026-10-25 | Where the ontology declares no range, the verifier uses the kind of objects in the data (literal or entity) | done, budgeted planner only |
+| 2026-10-25 | Development loop ran on CK26 items 1–10 (20 questions); report items 11–50 separately as held out | rule |
 
-## 6. Survey
+## 6. Implementation of C2
+
+| Phase | Module | What it does |
+|---|---|---|
+| Parse | `systems/budgeted.py` | one model call: a goal and a plan with `[phrases]` |
+| Bind | `binding.py` | phrases → ranked properties (and inverses), classes, entities, values; repairs guessed IRIs and label triples |
+| Check | `verifier.py` | rejects ill-typed candidates; ranges from the data where the ontology has none |
+| Price | `pricing.py` | rows and C_out from statistics; seconds from a fitted line |
+| Select | `selection.py` | logistic p(correct); run argmax p − λ·seconds; accept above a threshold, else re-parse |
+
+Budget: `llm_calls` (default 3), `executions` (8), optional `graph_seconds` and
+`max_query_seconds`. Each reading gets an even share of executions while model
+calls remain. `experiments/fit_selector.py` fits the selector's weights from a
+run's logged candidates; fit on a benchmark other than the one reported
+(CK25 leaks into CK26).
+
+Pricing on CK26 (44 gold queries with one BGP): median q-error 1.05, p90 30,
+max 1,936; statistics take 0.17 s.
+
+Development on CK26 items 1–10 with llama3.1 8B, 20 questions, set F1:
+0.000 (first version) → 0.167 (repairs for guessed IRIs, inverse relations,
+label triples) → 0.200 (value slots, data-derived ranges, execution shares).
+Those items informed the design, so the full-run report separates them.
+
+## 7. Survey
 
 ✓ means the venue and authors were checked against the publisher or arXiv on
 2026-10-25. Unmarked entries are cited from memory: verify them before they
@@ -153,7 +180,7 @@ rule, but they matter for novelty.
 - ✓ **Liu et al., arXiv 2408.05109.** Survey of NL2SQL with LLMs: the best single overview of the pipeline (schema linking, generation, correction, selection). [arXiv](https://arxiv.org/abs/2408.05109)
 - **Pourreza & Rafiei, NeurIPS 2023 (DIN-SQL).** Decomposed generation with self-correction.
 - ✓ **Pourreza et al., ICLR 2025, CHASE-SQL.** Several generators and a trained pairwise selector. The state of the art on selection, but with no budget. [ICLR](https://proceedings.iclr.cc/paper_files/paper/2025/hash/974ff7b5bf08dbf9400b5d599a39c77f-Abstract-Conference.html)
-- ✓ **Huang et al., PVLDB 18, ThrifLLM.** Choosing LLMs under a cost budget to maximize correctness, shown NP-hard-like. A formal template for C2's budget constraint. [PVLDB](https://www.vldb.org/pvldb/vol18/p4410-huang.pdf)
+- ✓ **Huang et al., PVLDB 18, ThriftLLM.** Choosing LLMs for classification queries under a cost budget to maximize correctness; the objective is non-submodular and likely NP-hard. A formal template for C2's budget constraint. [PVLDB](https://www.vldb.org/pvldb/vol18/p4410-huang.pdf)
 - ✓ **Peng et al., arXiv 2608.02876 (2026), BAP-SQL.** Budget-aware observation planning: estimate query risk, rewrite, cap with a runtime shield. **Closest prior to C2**; it controls observation cost, not which candidate to try, and its gains shrink with larger budgets. [arXiv](https://arxiv.org/abs/2608.02876)
 - ✓ **arXiv 2505.14174; EllieSQL arXiv 2503.22402.** Confidence-aware selection that cuts LLM calls by about 60%, and routing by question complexity. Preprints, but they set the baselines C2 must beat.
 
@@ -167,7 +194,7 @@ rule, but they matter for novelty.
 
 1. Leis 2015, then Bao: why estimates matter, and how a learned policy can steer a system it doesn't own.
 2. Pangu and KB-BINDER: what "checked plans" and "draft then bind" already cover.
-3. CHASE-SQL, ThrifLLM and BAP-SQL: selection and budgets in text-to-SQL. C2 must state its difference from these three.
+3. CHASE-SQL, ThriftLLM and BAP-SQL: selection and budgets in text-to-SQL. C2 must state its difference from these three.
 4. GNCE: a ready-made `ĉ_exec`.
 5. DL-Lite and Ontop: if the ontology-rewrite angle is kept.
 
