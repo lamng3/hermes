@@ -155,7 +155,11 @@ class Budgeted:
             return [], "no term matches " + ", ".join(f"[{p}]" for p in unbound)
         seen = {c.sparql for c in pool}
         found, rejected, errors, checked = [], 0, [], []
-        for assignment, weight in assignments(choices, self.candidates):
+        # The cap counts well-typed plans: checking runs nothing, so look further
+        # through the assignments when the best-scored ones are ill-typed.
+        for assignment, weight in assignments(choices, self.candidates * _SEARCH):
+            if len(found) >= self.candidates:
+                break
             bound = substitute(reading, assignment)
             variants = [(bound, weight, "binding")] + [
                 (variant, weight * _COLLAPSE * score, "label collapse")
@@ -455,6 +459,7 @@ def prompt(question, vocabulary, explorer, entities, context, earlier=""):
 
 
 _COLLAPSE = 0.9  # a variant where a name written as a literal became its entity
+_SEARCH = 8  # assignments examined per well-typed candidate kept, at most
 
 
 def _changes(given, repaired):

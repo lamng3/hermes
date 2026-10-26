@@ -174,3 +174,12 @@ def test_label_phrases_bind_to_the_label_properties_the_data_uses(olympics):
     found = catalog(olympics)
     assert found.rank(Slot("label", "property"))[0].term == "rdfs:label"
     assert "skos:prefLabel" not in [c.term for c in found.rank(Slot("label", "property"))]
+
+
+def test_ill_typed_assignments_do_not_use_up_the_candidate_cap(olympics):
+    # [Lake Placid] as a subject: the entity is well-typed, the literal is not.
+    reading = {"goal": {"answer": ["?g"]},
+               "actions": [{"op": "triple", "pattern": "[Lake Placid] [hosted] ?g"}]}
+    output = Budgeted(llm=ScriptedLLM([json.dumps(reading)]), llm_calls=1, candidates=1)(
+        "What did Lake Placid host?", olympics)
+    assert output["candidates"] and "ex:LakePlacid ex:hosted ?g" in output["sparql"]
