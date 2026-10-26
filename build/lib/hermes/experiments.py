@@ -30,10 +30,10 @@ from pathlib import Path
 import yaml
 
 from hermes import benchmarks, llm as llms, runtime, systems
-from hermes.costs import run_cost
+from hermes.pricing.prices import run_cost
 from hermes.context import Context, Example
 from hermes.evaluation import aggregate, score
-from hermes.store import QueryError
+from hermes.graph.stores import QueryError
 
 
 LIMITS = {
@@ -439,7 +439,7 @@ def leaderboard(results="results", benchmark=None):
     """Markdown table of the latest run per config, with official peer rows."""
     root = Path(results)
     lines = []
-    for bench_dir in sorted(p for p in root.iterdir() if p.is_dir() and p.name != "peers"):
+    for bench_dir in sorted(p for p in root.iterdir() if p.is_dir() and p.name not in ("peers", "archive")):
         if benchmark and bench_dir.name != benchmark:
             continue
         rows, cost_rows = [], []

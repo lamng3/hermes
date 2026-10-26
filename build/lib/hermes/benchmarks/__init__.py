@@ -21,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-from hermes.knowledge import KnowledgeGraph
+from hermes.graph.knowledge import KnowledgeGraph
 
 
 @dataclass
@@ -121,11 +121,12 @@ def graphs():
     return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-def graph(name, query_timeout=None):
+def graph(name, query_timeout=None, engine=None):
     """Factory: a KnowledgeGraph from its entry in data/graphs.yaml.
 
     query_timeout (seconds) bounds every instance query; it overrides the
-    graph's own `timeout` entry.
+    graph's own `timeout` entry. `engine` (oxigraph or rdflib) overrides the
+    graph's engine for local files.
     """
     spec = graphs().get(name)
     if spec is None:
@@ -142,7 +143,7 @@ def graph(name, query_timeout=None):
                 f"Run `hermes data fetch` for a benchmark that uses it."
             )
         kg = KnowledgeGraph.from_files(
-            *files, schema=schema, name=name, engine=spec.get("engine", "oxigraph"),
+            *files, schema=schema, name=name, engine=engine or spec.get("engine", "oxigraph"),
             timeout=query_timeout or spec.get("timeout"),
         )
     else:

@@ -1,4 +1,4 @@
-"""Command line: generate, systems, data, run, report, serve."""
+"""Command line: ask, plan, generate, systems, data, fewshot, run, sweep, report, serve."""
 
 import argparse
 import sys
@@ -7,7 +7,7 @@ from pathlib import Path
 
 from hermes import ask, benchmarks, systems
 from hermes.context import Context, Example
-from hermes.knowledge import KnowledgeGraph
+from hermes.graph.knowledge import KnowledgeGraph
 
 
 def main(argv=None):
@@ -24,6 +24,37 @@ def main(argv=None):
     generate.add_argument("--examples", help="JSONL file of objects with nl and sparql fields.")
     generate.add_argument("--system", default="training-free",
                           help="Registered system to run (default: training-free).")
+
+    ask_ = commands.add_parser("ask", help="Answer a question over a knowledge graph.")
+    graph_of = ask_.add_mutually_exclusive_group(required=True)
+    graph_of.add_argument("--graph", help="Graph name from data/graphs.yaml.")
+    graph_of.add_argument("--files", nargs="+", help="RDF files: data, and the ontology.")
+    graph_of.add_argument("--endpoint", help="SPARQL endpoint URL.")
+    ask_.add_argument("--ontology", nargs="*", default=[], help="Ontology files, with --files or --endpoint.")
+    ask_.add_argument("question")
+    ask_.add_argument("--calls", type=int, default=3, help="Model calls allowed (default 3).")
+    ask_.add_argument("--tokens", type=int, help="Model tokens allowed.")
+    ask_.add_argument("--usd", type=float, help="Dollars allowed, for priced models.")
+    ask_.add_argument("--rows", type=int, help="Graph rows the plan may fetch.")
+    ask_.add_argument("--executor", choices=("plan", "engine"), default="plan")
+    ask_.add_argument("--rows-shown", type=int, default=20)
+    ask_.add_argument("--quiet", action="store_true", help="Print only the answer.")
+
+    plan = commands.add_parser("plan", help="Translate a SPARQL query to relational algebra, "
+                                            "optimize it with the graph's statistics, and run it.")
+    where = plan.add_mutually_exclusive_group(required=True)
+    where.add_argument("--graph", help="Graph name from data/graphs.yaml.")
+    where.add_argument("--files", nargs="+", help="RDF files: ontology and data.")
+    plan.add_argument("--query", help="SPARQL text (or use --file).")
+    plan.add_argument("--file", help="A file holding the SPARQL query.")
+    plan.add_argument("--rows", type=int, default=20, help="Result rows to print.")
+
+    fewshot = commands.add_parser("fewshot", help="Synthetic few-shot examples from a graph.")
+    fewshot.add_argument("action", choices=("build", "show"))
+    fewshot.add_argument("--graph", required=True, help="Graph name from data/graphs.yaml.")
+    fewshot.add_argument("--count", type=int, default=30, help="Examples to keep.")
+    fewshot.add_argument("--attempts", type=int, help="Candidates to try (default 4 x count).")
+    fewshot.add_argument("--seed", type=int, default=0)
 
     commands.add_parser("systems", help="List the registered systems.")
 
@@ -43,7 +74,7 @@ def main(argv=None):
 
     sweep = commands.add_parser("sweep", help="Run a grid of benchmarks, systems, and models.")
     sweep.add_argument("file", help="Sweep YAML under configs/sweeps/.")
-    sweep.add_argument("--only", help="Run only configs whose name contains this text.")
+    sweep.add_argument("--only", help="Run only configs whose benchmark/name contains this text.")
     sweep.add_argument("--list", action="store_true", help="List the runs and exit.")
     sweep.add_argument("--limit", type=int, help="Only the first N items of each run.")
     sweep.add_argument("--fresh", action="store_true",
@@ -63,6 +94,12 @@ def main(argv=None):
     serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+    if args.command == "ask":
+        return _ask(args)
+    if args.command == "fewshot":
+        return _fewshot(args)
+    if args.command == "plan":
+        return _plan(args)
     if args.command == "systems":
         print("\n".join(systems.available()))
     elif args.command == "generate":
@@ -89,7 +126,8 @@ def main(argv=None):
             Progress, Run, expand_sweep, latest_finished, latest_unfinished,
         )
 
-        configs = [c for c in expand_sweep(args.file) if not args.only or args.only in c["name"]]
+        configs = [c for c in expand_sweep(args.file)
+                   if not args.only or args.only in f"{c['benchmark']}/{c['name']}"]
         for config in configs:
             if args.limit:
                 config["limit"] = args.limit
@@ -130,6 +168,113 @@ def main(argv=None):
             params["llm"] = llms.create(**config["llm"])
         start(systems.create(config["system"], **params), args.host, args.port)
     return 0
+
+
+def _ask(args):
+    from hermes import Budget, Hermes, planner
+    from hermes import llm as llms
+    from hermes.pipeline.events import Printer
+    from hermes.pipeline.fewshot import store_path
+
+    if args.graph:
+        kg, name = benchmarks.graph(args.graph), args.graph
+    elif args.endpoint:
+        kg, name = KnowledgeGraph.from_endpoint(args.endpoint, schema=args.ontology), args.endpoint
+    else:
+        kg = KnowledgeGraph.from_files(*args.ontology, *args.files, schema=args.ontology or ())
+        name = kg.name
+    budget = Budget(llm_calls=args.calls, tokens=args.tokens, usd=args.usd, rows=args.rows)
+    hermes = Hermes(kg, llm=llms.from_env(), budget=budget, fewshots=store_path(name),
+                    executor=args.executor, observers=[] if args.quiet else [Printer()])
+    answer = hermes.ask(args.question)
+    print(answer.sparql or "(no query)")
+    if answer.plan is not None and not args.quiet:
+        query = answer.plan.query
+        print("\nPlan\n" + planner.tree(query.root, query.namespaces))
+    total = answer.spend.total
+    print(f"\nSpent: {total.llm_calls:.0f} model calls, {total.tokens:,.0f} tokens"
+          + (f", ${total.usd:.4f}" if total.usd else "")
+          + f", {total.queries:.0f} graph queries, {total.rows:,.0f} rows · {answer.seconds:.1f} s")
+    if answer.error:
+        print(f"No answer: {answer.error}")
+        return 1
+    if answer.boolean is not None:
+        print(f"Answer: {answer.boolean}")
+        return 0
+    print(f"{len(answer.rows)} rows")
+    names = answer.plan.query.namespaces
+    print("  ".join("?" + str(v) for v in answer.variables))
+    for row in answer.rows[: args.rows_shown]:
+        print("  ".join(planner.expression(row[v], names) if row.get(v) is not None else "-"
+                        for v in answer.variables))
+    return 0
+
+
+def _fewshot(args):
+    from hermes import Budget, Hermes
+    from hermes import llm as llms
+    from hermes.pipeline.fewshot import FewShotStore, store_path
+    from hermes.pipeline.synthetic import SyntheticExamples
+
+    path = store_path(args.graph)
+    if args.action == "show":
+        for example in FewShotStore.load(path).examples:
+            print(f"[{example.meta.get('template', example.source)}] {example.question}")
+        return 0
+    kg = benchmarks.graph(args.graph)
+    llm = llms.from_env()
+    hermes = Hermes(kg, llm=llm, budget=Budget(llm_calls=3), examples=0)
+
+    def answer(question):
+        reply = hermes.ask(question)
+        return reply.sparql if reply.ok else ""
+
+    maker = SyntheticExamples(kg, hermes.catalog, hermes.names, llm, seed=args.seed)
+    kept, tried = maker.build(args.count, answer, args.attempts,
+                              log=lambda line: print(line, file=sys.stderr))
+    FewShotStore(kept).save(path)
+    print(f"{len(kept)} of {tried} candidates kept -> {path}")
+    return 0
+
+
+def _plan(args):
+    from hermes import planner
+
+    sparql = args.query or Path(args.file).read_text(encoding="utf-8")
+    kg = benchmarks.graph(args.graph) if args.graph else KnowledgeGraph.from_files(*args.files)
+    optimized = planner.plan(sparql, kg)
+    written, query, estimate = optimized.written, optimized.query, optimized.estimator
+    run = planner.PlanExecutor(kg)
+    before, after = run(written), run(query)
+    engine = planner.EngineExecutor(kg)(written)
+
+    def notes(trace):
+        return lambda node: (f"   est {estimate(node).rows:,.1f}"
+                             + (f" · got {trace.rows[id(node)]:,}" if id(node) in trace.rows else ""))
+
+    print("As written\n" + planner.tree(written.root, written.namespaces, notes(before.trace)))
+    print("\nRewrites")
+    print("\n".join(f"- {r.text}" for r in optimized.rewrites) or "- none")
+    print("\nOptimized\n" + planner.tree(query.root, query.namespaces, notes(after.trace)))
+    print("\n" + planner.formula(query.root, query.namespaces))
+    print(f"\n{'':22}{'as written':>12}{'optimized':>12}")
+    for name, value in (("estimated C_out", lambda q, t: f"{estimate(q.root).cost:,.0f}"),
+                        ("store queries", lambda q, t: f"{t.queries:,}"),
+                        ("rows fetched", lambda q, t: f"{t.fetched:,}"),
+                        ("intermediate rows", lambda q, t: f"{t.intermediate:,}"),
+                        ("milliseconds", lambda q, t: f"{t.seconds * 1000:,.1f}")):
+        print(f"{name:22}{value(written, before.trace):>12}{value(query, after.trace):>12}")
+    same = planner.same_answers(after, engine)
+    print(f"\nSame answers as the engine: {'yes' if same else 'NO'}")
+    if after.form == "ASK":
+        print(f"Answer: {after.boolean}")
+        return 0 if same else 1
+    print(f"{len(after.rows)} rows" + (f" (first {args.rows})" if len(after.rows) > args.rows else ""))
+    print("  ".join("?" + str(v) for v in after.variables))
+    for row in after.rows[: args.rows]:
+        print("  ".join(planner.expression(row[v], query.namespaces) if row.get(v) is not None
+                        else "-" for v in after.variables))
+    return 0 if same else 1
 
 
 def _data(args):

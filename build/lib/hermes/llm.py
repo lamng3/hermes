@@ -268,6 +268,37 @@ class CachedLLM(LLM):
         return completion
 
 
+class NeedReply(Exception):
+    """A ReplayLLM was asked for a reply it does not have yet."""
+
+    def __init__(self, prompt, system):
+        super().__init__("a model reply is needed")
+        self.prompt, self.system = prompt, system
+
+
+class ReplayLLM(LLM):
+    """Replies given in advance, in order; past the last, raise NeedReply with the prompt.
+
+    A caller that cannot wait for a model inside a call (a web page reaching a
+    model asynchronously) runs the pipeline, gets the prompt from NeedReply,
+    obtains the reply its own way, and runs the pipeline again with one more
+    reply: every earlier step repeats exactly, so the replies line up.
+    """
+
+    def __init__(self, replies=(), model="replayed", provider="replay"):
+        self.replies = list(replies)
+        self.model = model
+        self.provider = provider
+        self.prompts = []
+
+    def complete(self, prompt, system=SYSTEM):
+        self.prompts.append((prompt, system))
+        index = len(self.prompts) - 1
+        if index >= len(self.replies):
+            raise NeedReply(prompt, system)
+        return self.replies[index]
+
+
 def strip_thinking(text):
     """Drop a reasoning block such as <think>...</think> that some models emit first."""
     import re
