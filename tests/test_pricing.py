@@ -89,3 +89,12 @@ def test_seconds_are_fitted_from_observed_executions():
     for cost in (10, 20, 30, 40):
         model.observe(cost, 0.01 + 0.001 * cost)
     assert model.predict(100) == pytest.approx(0.11)
+
+
+def test_ranking_price_does_not_depend_on_measured_time(pricer):
+    estimate = pricer.estimate(plan(triple("?c ex:hosted ?g")))
+    before = pricer.nominal(estimate)
+    for seconds in (5.0, 9.0, 7.0):  # a slow machine
+        pricer.observe(estimate, seconds)
+    assert pricer.nominal(estimate) == before
+    assert pricer.seconds.predict(estimate.cost) > before

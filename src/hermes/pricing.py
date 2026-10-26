@@ -15,7 +15,9 @@ System R (Selinger et al., SIGMOD 1979):
 Patterns are joined greedily, smallest first and connected before cartesian,
 as engines order a BGP. The cost of a plan is C_out: the estimated sizes of
 every scan and intermediate result, summed. Seconds come from a line fitted
-online to (C_out, measured seconds) pairs, so the price adapts to the store.
+online to (C_out, measured seconds) pairs, so time budgets adapt to the
+store; ranking uses `nominal`, the prior rate, so that it does not depend on
+how fast this machine happened to be.
 
 A local graph is summarized once with grouped queries. An endpoint such as
 DBpedia is asked about each predicate or class the first time a plan uses it,
@@ -172,6 +174,12 @@ class SecondsModel:
         intercept, slope = self.coefficients()
         return intercept + slope * cost
 
+    def nominal(self, cost):
+        """Seconds at the prior rate: depends only on the plan, so choices that use it
+        are the same on every machine and every run."""
+        intercept, slope = self.prior
+        return intercept + slope * cost
+
 
 class Pricer:
     """Estimate rows, C_out and seconds of a plan; learn seconds from executions."""
@@ -224,6 +232,10 @@ class Pricer:
         if plan.form == "ASK":
             rows = min(rows, 1.0)
         return Estimate(rows, cost, self.seconds.predict(cost), sorted(set(unknown)))
+
+    def nominal(self, estimate):
+        """A price for ranking: seconds at the prior rate, from C_out alone."""
+        return self.seconds.nominal(estimate.cost)
 
     def observe(self, estimate, seconds, rows=None):
         """Record a real execution: fit seconds, and the q-error of the row estimate."""

@@ -62,10 +62,14 @@ def vocabulary(store, declared=(), limit=60):
 
 def declared_prefixes(*paths):
     """Prefixes as written in the files, in order, without duplicates."""
+    return prefixes_in(*(Path(p).read_text(encoding="utf-8", errors="replace") for p in paths))
+
+
+def prefixes_in(*texts):
+    """Prefixes as written in RDF texts, in order, without duplicates."""
     found = []
     seen = set()
-    for path in paths:
-        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    for text in texts:
         for prefix, namespace in _DECLARED_PREFIX.findall(text):
             key = prefix.lower()
             if key in seen:
