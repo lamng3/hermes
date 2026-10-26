@@ -74,7 +74,7 @@ def main(argv=None):
 
     sweep = commands.add_parser("sweep", help="Run a grid of benchmarks, systems, and models.")
     sweep.add_argument("file", help="Sweep YAML under configs/sweeps/.")
-    sweep.add_argument("--only", help="Run only configs whose name contains this text.")
+    sweep.add_argument("--only", help="Run only configs whose benchmark/name contains this text.")
     sweep.add_argument("--list", action="store_true", help="List the runs and exit.")
     sweep.add_argument("--limit", type=int, help="Only the first N items of each run.")
     sweep.add_argument("--fresh", action="store_true",
@@ -126,7 +126,8 @@ def main(argv=None):
             Progress, Run, expand_sweep, latest_finished, latest_unfinished,
         )
 
-        configs = [c for c in expand_sweep(args.file) if not args.only or args.only in c["name"]]
+        configs = [c for c in expand_sweep(args.file)
+                   if not args.only or args.only in f"{c['benchmark']}/{c['name']}"]
         for config in configs:
             if args.limit:
                 config["limit"] = args.limit
