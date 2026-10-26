@@ -247,20 +247,8 @@ class Verifier:
 
     def triples(self, pattern, judgment):
         """Split a pattern into (subject, predicate, object) token triples."""
-        tokens = _TOKEN.findall(pattern)
-        triples, subject, predicate, expect = [], None, None, "s"
-        for token in tokens:
-            if token == ";":
-                expect = "p"
-            elif token == ",":
-                expect = "o"
-            elif expect == "s":
-                subject, expect = token, "p"
-            elif expect == "p":
-                predicate, expect = token, "o"
-            else:
-                triples.append((subject, predicate, token))
-        if expect != "s" and not triples:
+        triples, complete = split_triples(pattern)
+        if not complete:
             judgment.errors.append(f"incomplete triple pattern: {pattern}")
         return triples
 
@@ -362,6 +350,23 @@ def parse_goal(data):
         raise ValueError(f"goal kind must be one of {', '.join(KINDS)}")
     answer = tuple(a if a.startswith(("?", "$")) else f"?{a}" for a in answer)
     return Goal(answer, kind, data.get("type", "") or "", bool(data.get("many", True)))
+
+
+def split_triples(pattern):
+    """(subject, predicate, object) token triples of a pattern, and whether it is complete."""
+    triples, subject, predicate, expect = [], None, None, "s"
+    for token in _TOKEN.findall(pattern):
+        if token == ";":
+            expect = "p"
+        elif token == ",":
+            expect = "o"
+        elif expect == "s":
+            subject, expect = token, "p"
+        elif expect == "p":
+            predicate, expect = token, "o"
+        else:
+            triples.append((subject, predicate, token))
+    return triples, expect == "s" or bool(triples)
 
 
 def _closure(parents):
