@@ -1,4 +1,4 @@
-"""Command line: generate, systems, data, run, report, serve."""
+"""Command line: ask, plan, generate, systems, data, fewshot, run, sweep, report, serve."""
 
 import argparse
 import sys
@@ -24,6 +24,21 @@ def main(argv=None):
     generate.add_argument("--examples", help="JSONL file of objects with nl and sparql fields.")
     generate.add_argument("--system", default="training-free",
                           help="Registered system to run (default: training-free).")
+
+    ask_ = commands.add_parser("ask", help="Answer a question over a knowledge graph.")
+    graph_of = ask_.add_mutually_exclusive_group(required=True)
+    graph_of.add_argument("--graph", help="Graph name from data/graphs.yaml.")
+    graph_of.add_argument("--files", nargs="+", help="RDF files: data, and the ontology.")
+    graph_of.add_argument("--endpoint", help="SPARQL endpoint URL.")
+    ask_.add_argument("--ontology", nargs="*", default=[], help="Ontology files, with --files or --endpoint.")
+    ask_.add_argument("question")
+    ask_.add_argument("--calls", type=int, default=3, help="Model calls allowed (default 3).")
+    ask_.add_argument("--tokens", type=int, help="Model tokens allowed.")
+    ask_.add_argument("--usd", type=float, help="Dollars allowed, for priced models.")
+    ask_.add_argument("--rows", type=int, help="Graph rows the plan may fetch.")
+    ask_.add_argument("--executor", choices=("plan", "engine"), default="plan")
+    ask_.add_argument("--rows-shown", type=int, default=20)
+    ask_.add_argument("--quiet", action="store_true", help="Print only the answer.")
 
     plan = commands.add_parser("plan", help="Translate a SPARQL query to relational algebra, "
                                             "optimize it with the graph's statistics, and run it.")
@@ -72,6 +87,8 @@ def main(argv=None):
     serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+    if args.command == "ask":
+        return _ask(args)
     if args.command == "plan":
         return _plan(args)
     if args.command == "systems":
@@ -140,6 +157,46 @@ def main(argv=None):
         if _takes_llm(config["system"]):
             params["llm"] = llms.create(**config["llm"])
         start(systems.create(config["system"], **params), args.host, args.port)
+    return 0
+
+
+def _ask(args):
+    from hermes import Budget, Hermes, planner
+    from hermes import llm as llms
+    from hermes.pipeline.events import Printer
+    from hermes.pipeline.fewshot import store_path
+
+    if args.graph:
+        kg, name = benchmarks.graph(args.graph), args.graph
+    elif args.endpoint:
+        kg, name = KnowledgeGraph.from_endpoint(args.endpoint, schema=args.ontology), args.endpoint
+    else:
+        kg = KnowledgeGraph.from_files(*args.ontology, *args.files, schema=args.ontology or ())
+        name = kg.name
+    budget = Budget(llm_calls=args.calls, tokens=args.tokens, usd=args.usd, rows=args.rows)
+    hermes = Hermes(kg, llm=llms.from_env(), budget=budget, fewshots=store_path(name),
+                    executor=args.executor, observers=[] if args.quiet else [Printer()])
+    answer = hermes.ask(args.question)
+    print(answer.sparql or "(no query)")
+    if answer.plan is not None and not args.quiet:
+        query = answer.plan.query
+        print("\nPlan\n" + planner.tree(query.root, query.namespaces))
+    total = answer.spend.total
+    print(f"\nSpent: {total.llm_calls:.0f} model calls, {total.tokens:,.0f} tokens"
+          + (f", ${total.usd:.4f}" if total.usd else "")
+          + f", {total.queries:.0f} graph queries, {total.rows:,.0f} rows · {answer.seconds:.1f} s")
+    if answer.error:
+        print(f"No answer: {answer.error}")
+        return 1
+    if answer.boolean is not None:
+        print(f"Answer: {answer.boolean}")
+        return 0
+    print(f"{len(answer.rows)} rows")
+    names = answer.plan.query.namespaces
+    print("  ".join("?" + str(v) for v in answer.variables))
+    for row in answer.rows[: args.rows_shown]:
+        print("  ".join(planner.expression(row[v], names) if row.get(v) is not None else "-"
+                        for v in answer.variables))
     return 0
 
 

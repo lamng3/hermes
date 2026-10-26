@@ -24,9 +24,8 @@ from rdflib.plugins.sparql.parserutils import CompValue
 from rdflib.plugins.sparql.sparql import QueryContext
 
 from hermes.planner.algebra import Join, Scan, copy_part, variables
-from hermes.planner.estimate import BIND_LIMIT, scan_below
+from hermes.planner.estimate import BIND_CHUNK, BIND_LIMIT, scan_below
 
-BIND_CHUNK = 100  # bindings per scan query of a bind join
 MAX_ROWS = 200_000  # rows one scan may fetch before the run stops
 
 

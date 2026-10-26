@@ -1,0 +1,32 @@
+{
+  "queries": 50,
+  "status": {
+    "ok": 41,
+    "plan error": 9
+  },
+  "rewritten": 11,
+  "fetched": {
+    "written": 622861,
+    "optimized": 588535,
+    "median ratio": 1.0
+  },
+  "intermediate": {
+    "written": 1097107,
+    "optimized": 1060291,
+    "median ratio": 1.0
+  },
+  "store queries": {
+    "written": 110,
+    "optimized": 110
+  },
+  "seconds": {
+    "written": 68.374,
+    "optimized": 29.736,
+    "engine": 15.146
+  },
+  "worse": 2,
+  "qerror": {
+    "median": 1.41,
+    "p90": 10.79
+  }
+}

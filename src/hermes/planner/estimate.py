@@ -23,6 +23,7 @@ from hermes.pricing.statistics import DEFAULT_ROWS, EQUALITY, RANGE, TYPE, Count
 
 
 BIND_LIMIT = 500  # a bind join sends at most this many distinct bindings
+BIND_CHUNK = 100  # bindings per scan query of a bind join
 
 
 @dataclass
@@ -194,3 +195,29 @@ def join(left, right):
 
 def cap(distinct, rows):
     return {v: min(d, rows) for v, d in distinct.items()}
+
+
+def fetched(node, estimate):
+    """Store queries and rows the plan executor is expected to fetch for a plan.
+
+    A scan is one query for its rows; a scan joined by binding sends its
+    bindings in chunks and fetches about `access` rows; other operators fetch
+    what their children fetch.
+    """
+    if isinstance(node, Scan):
+        return 1.0, estimate(node).rows
+    if isinstance(node, Join):
+        left_queries, left_rows = fetched(node.left, estimate)
+        left, right = estimate(node.left), estimate(node.right)
+        if scan_below(node.right) is not None and set(left.distinct) & set(right.distinct) \
+                and access(left, right, node.right) < right.cost:
+            keys = min(left.rows, BIND_LIMIT)
+            return left_queries + max(1.0, math.ceil(keys / BIND_CHUNK)), \
+                left_rows + access(left, right, node.right)
+        right_queries, right_rows = fetched(node.right, estimate)
+        return left_queries + right_queries, left_rows + right_rows
+    queries = rows = 0.0
+    for child in node.children:
+        q, r = fetched(child, estimate)
+        queries, rows = queries + q, rows + r
+    return queries, rows
