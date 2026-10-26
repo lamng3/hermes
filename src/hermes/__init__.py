@@ -3,8 +3,11 @@
 from hermes import systems
 from hermes.context import Context, Example
 from hermes.knowledge import KnowledgeGraph, as_knowledge_graph
-from hermes.systems import algebra_agent, prover, training_free, uniqgen  # noqa: F401  (registers)
+from hermes.systems import (  # noqa: F401  (registers)
+    algebra_agent, budgeted, prover, training_free, uniqgen,
+)
 from hermes.systems.algebra_agent import AlgebraAgent
+from hermes.systems.budgeted import Budgeted
 from hermes.systems.prover import Prover
 from hermes.systems.training_free import TrainingFree
 from hermes.systems.uniqgen import UniQGen
@@ -19,6 +22,7 @@ def ask(question, kg, context=None, system=DEFAULT_SYSTEM, **params):
 
 __all__ = [
     "AlgebraAgent",
+    "Budgeted",
     "Context",
     "Example",
     "KnowledgeGraph",

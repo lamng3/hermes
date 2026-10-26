@@ -151,13 +151,21 @@ class Schema:
 class Verifier:
     """Check a plan against the schema and the goal. Nothing is executed."""
 
-    def __init__(self, schema, prefixes):
+    def __init__(self, schema, prefixes, kind_of=None):
         self.schema = schema
         self.prefixes = list(prefixes)
+        # For properties without a declared range: "literal" or "entity" when the
+        # data's objects are all one kind (hermes.pricing.Statistics), else None.
+        self.kind_of = kind_of
 
     @classmethod
-    def for_kg(cls, kg, prefixes):
-        return cls(Schema.from_kg(kg), prefixes)
+    def for_kg(cls, kg, prefixes, statistics=None):
+        kind_of = None
+        if statistics is not None:
+            def kind_of(iri):
+                count = statistics.predicate(iri)
+                return count.kind if count else None
+        return cls(Schema.from_kg(kg), prefixes, kind_of)
 
     def check(self, plan, goal=None):
         judgment = Judgment()
@@ -267,6 +275,10 @@ class Verifier:
     def _type_triple(self, subject, predicate, value, judgment):
         schema, context = self.schema, judgment.context
         if _is_path(predicate):
+            if predicate.startswith("^") and _is_literal(value):
+                judgment.errors.append(
+                    f"type mismatch: {predicate} reads backwards, so the literal {value} "
+                    "would be a subject")
             return
         prop = self.expand(predicate)
         if _is_variable(predicate):
@@ -291,7 +303,11 @@ class Verifier:
             return
         for domain in schema.domains.get(prop, ()):
             self._assign(subject, domain, f"the domain of {predicate}", judgment)
-        for range_ in schema.ranges.get(prop, ()):
+        ranges = schema.ranges.get(prop, ())
+        if ranges and _is_iri(value) and all(schema.is_literal_type(r) for r in ranges):
+            judgment.errors.append(
+                f"type mismatch: {predicate} expects a literal, got the entity {value}")
+        for range_ in ranges:
             if _is_literal(value) and not schema.is_literal_type(range_):
                 judgment.errors.append(
                     f"type mismatch: {predicate} expects an entity of {self.short(range_)}, "
@@ -299,6 +315,18 @@ class Verifier:
                 )
             elif _is_variable(value):
                 self._assign(value, range_, f"the range of {predicate}", judgment)
+        if not ranges and self.kind_of and prop != TYPE:
+            kind = self.kind_of(prop)
+            if kind == "literal" and _is_iri(value):
+                judgment.errors.append(
+                    f"type mismatch: {predicate} holds only literals in this graph, "
+                    f"got the entity {value}")
+            elif kind == "entity" and _is_literal(value):
+                judgment.errors.append(
+                    f"type mismatch: {predicate} holds only entities in this graph, "
+                    f"got the literal {value}")
+            elif kind == "literal" and _is_variable(value):
+                self._assign(value, LITERAL, f"the values of {predicate}", judgment)
         if _is_variable(value) and not schema.ranges.get(prop):
             context.setdefault(value, set())
 
@@ -397,6 +425,10 @@ def _is_variable(token):
 def _is_literal(token):
     return bool(token) and (token[0] in "\"'" or re.fullmatch(r"[-+]?\d+(\.\d+)?", token)
                             or token in ("true", "false"))
+
+
+def _is_iri(token):
+    return bool(token) and not _is_variable(token) and not _is_literal(token) and token != "a"
 
 
 def _is_path(token):

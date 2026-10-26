@@ -121,3 +121,20 @@ def test_select_star_projects_extra_variables(verifier):
     goal = Goal(answer=("?c",), kind="entity")
     open_goals = verifier.check(plan(triple("?c ex:hosted ?g")), goal).goals
     assert open_goals == ["⊢ project only the answer; drop ?g"]
+
+
+def test_entities_where_values_belong_and_literals_read_backwards(verifier):
+    assert "expects a literal, got the entity ex:Paris" in errors(
+        verifier, triple("?g ex:season ex:Paris"))[0]
+    assert "would be a subject" in errors(verifier, triple('?g ^ex:hosted "Paris"'))[0]
+    assert not errors(verifier, triple('?g ex:season "Winter"'))
+
+
+def test_ranges_the_ontology_omits_are_read_from_the_data(olympics):
+    from hermes.pricing import statistics_for
+
+    bare = Verifier(Schema(properties={EX + "hosted", EX + "season"}), PREFIXES,
+                    kind_of=lambda iri: statistics_for(olympics).predicate(iri).kind)
+    assert "holds only literals" in errors(bare, triple("?g ex:season ex:Paris"))[0]
+    assert "holds only entities" in errors(bare, triple('?c ex:hosted "Winter"'))[0]
+    assert not errors(bare, triple('?g ex:season "Winter"'))
