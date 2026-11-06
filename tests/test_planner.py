@@ -1,7 +1,7 @@
 import pytest
 from rdflib import Variable
 
-from hermes import planner
+from hermes import KnowledgeGraph, planner
 from hermes.planner import Join, Scan
 
 EX = "PREFIX ex: <http://example.org/olympics#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
@@ -83,3 +83,41 @@ def test_unsupported_forms_are_reported():
 def test_results_hold_rdflib_terms(olympics):
     result = planner.PlanExecutor(olympics)(planner.translate(EX + SHAPES["order"]))
     assert [int(row[Variable("y")]) for row in result.rows] == [2012, 2004, 2002]
+
+
+SCOPE_DATA = """
+@prefix : <http://ex.org/> .
+:a1 :p :b1 ; :q :d1 ; :r 5 .
+:a2 :p :b2 ; :q :d2 ; :r 0 .
+:a3 :p :b3 ; :q :d3 .
+:a4 :p :b4 ; :q :d4 .
+:a5 :p :b5 ; :q :d5 .
+:a6 :p :b6 ; :q :d6 .
+:z1 :p :y1 .
+:z2 :p :y2 .
+:z3 :q :y3 .
+:z4 :q :y4 .
+"""
+SCOPE = {
+    "a filter on a variable bound only outside its group":
+        ("{ { ?a :p ?b . ?a :q ?d . FILTER(?c > 1) } ?a :r ?c }", 0),
+    "the same, with the variable bound by OPTIONAL":
+        ("{ { ?a :p ?b . ?a :q ?d . FILTER(?c > 1) } { ?a :p ?b OPTIONAL { ?a :r ?c } } }", 0),
+    "BOUND on a variable bound only outside its group":
+        ("{ { ?a :p ?b . ?a :q ?d . FILTER(!BOUND(?c)) } ?a :r ?c }", 2),
+    "a filter in the group that binds its variable":
+        ("{ { ?a :p ?b . ?a :q ?d } ?a :r ?c . FILTER(?c > 1) }", 1),
+}
+
+
+@pytest.mark.parametrize("name", sorted(SCOPE))
+def test_reordering_joins_keeps_a_filter_in_its_scope(tmp_path, name):
+    data = tmp_path / "data.ttl"
+    data.write_text(SCOPE_DATA)
+    kg = KnowledgeGraph.from_files(str(data), schema=[])
+    pattern, rows = SCOPE[name]
+    sparql = f"PREFIX : <http://ex.org/>\nSELECT ?a ?c WHERE {pattern}"
+    optimized = planner.plan(sparql, kg)
+    engine = planner.EngineExecutor(kg)(planner.translate(sparql))
+    assert len(engine.rows) == rows
+    assert planner.same_answers(planner.PlanExecutor(kg)(optimized.query), engine)

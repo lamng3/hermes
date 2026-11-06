@@ -12,6 +12,9 @@ they only move selections, reorder joins, and narrow what scans fetch.
   cartesian products, minimizing estimated C_out (Selinger et al., SIGMOD
   1979); each selection goes right after the operand that binds its last
   variable. Groups with more than `dp_limit` operands are ordered greedily.
+  A selection only joins the group if its own operand always binds what it
+  reads. SPARQL scopes a filter to its group, so lifting one out would let it
+  see variables bound elsewhere and change the answers.
 - `PruneScans` pushes projections into scans: a scan fetches only the
   variables used above it, never fewer than one so that multiplicities stay.
 """
@@ -243,7 +246,8 @@ def _flatten(node, operands, selections):
         _flatten(node.left, operands, selections)
         _flatten(node.right, operands, selections)
     elif (isinstance(node, Op) and node.kind == "Filter" and not has_pattern(node.part.expr)
-          and _in_group(node.children[0])):
+          and _in_group(node.children[0])
+          and expression_variables(node.part.expr) <= certain(node.children[0])):
         selections.append((expression_variables(node.part.expr), node))
         _flatten(node.children[0], operands, selections)
     else:
